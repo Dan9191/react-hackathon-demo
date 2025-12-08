@@ -1,47 +1,51 @@
-import React from 'react';
+import React, { useState } from 'react';
+import CreateTemplateModal from './CreateTemplateModal';
 
 export default function Header({ keycloak }) {
+    const [showCreateModal, setShowCreateModal] = useState(false);
+
     const handleLogin = () => keycloak.login();
-    const handleLogout = () =>
-        keycloak.logout({ redirectUri: window.location.origin });
+    const handleLogout = () => keycloak.logout({ redirectUri: window.location.origin });
+
+    const roles = keycloak.tokenParsed?.roles || [];
+    const isAdmin = roles.includes('ROLE_hackathon.admin') || roles.includes('ROLE_hackathon.manager');
 
     return (
-        <header
-            style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: '1rem',
-                borderBottom: '1px solid #ccc',
-            }}
-        >
-            <div>My Hackathon App</div>
+        <header className="main-nav">
+            <div className="nav-logo">Мосстройинформ</div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 {keycloak.authenticated ? (
                     <>
-                        {/* Иконка / имя пользователя */}
-                        <div
-                            style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '50%',
-                                background: '#007bff',
-                                color: '#fff',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: 'bold',
-                            }}
-                        >
-                            {keycloak.tokenParsed?.['preferred_username'][0].toUpperCase()}
+                        <div className="user-avatar">
+                            {keycloak.tokenParsed?.preferred_username?.[0].toUpperCase()}
                         </div>
-                        <span>{keycloak.tokenParsed?.['preferred_username']}</span>
-                        <button onClick={handleLogout}>Logout</button>
+                        <span>{keycloak.tokenParsed?.preferred_username}</span>
+
+                        {isAdmin && (
+                            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+                                Создать шаблон
+                            </button>
+                        )}
+
+                        <button onClick={handleLogout} className="btn btn-outline">
+                            Выйти
+                        </button>
                     </>
                 ) : (
-                    <button onClick={handleLogin}>Login</button>
+                    <button onClick={handleLogin} className="btn btn-primary">
+                        Войти
+                    </button>
                 )}
             </div>
+
+            {showCreateModal && (
+                <CreateTemplateModal
+                    token={keycloak.token}
+                    onClose={() => setShowCreateModal(false)}
+                    onSuccess={() => window.location.reload()}
+                />
+            )}
         </header>
     );
 }

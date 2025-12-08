@@ -1,9 +1,22 @@
 import Keycloak from 'keycloak-js';
+import { getKeycloakConfig } from './keycloak-config';
 
-const keycloak = new Keycloak({
-    url: 'http://localhost:9090/',
-    realm: 'hackathon',
-    clientId: 'react-app',
-});
+let keycloakInstance = null;
 
-export default keycloak;
+export const initKeycloak = async () => {
+    if (keycloakInstance) return keycloakInstance;
+
+    const config = getKeycloakConfig();
+    keycloakInstance = new Keycloak(config);
+
+    await keycloakInstance.init({
+        onLoad: 'check-sso',
+        silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
+        pkceMethod: 'S256',
+        checkLoginIframe: false,
+    });
+
+    return keycloakInstance;
+};
+
+export const getKeycloak = () => keycloakInstance;
