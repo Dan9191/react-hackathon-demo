@@ -1,40 +1,40 @@
+// App.jsx
 import React, { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import PublicContent from './components/PublicContent';
+import TemplateDetail from './components/TemplateDetail';
 
 export default function App({ keycloak }) {
-    const [setToken] = useState(null);
+    const [token, setToken] = useState(null);
 
-    // Первый токен, после инициализации Keycloak
     useEffect(() => {
         if (keycloak?.authenticated && keycloak.token) {
-            // Отложенно устанавливаем token, чтобы избежать синхронного setState
             setTimeout(() => setToken(keycloak.token), 0);
         }
-    }, [keycloak?.authenticated, keycloak?.token]);
+    }, [keycloak]);
 
-    // Автообновление токена каждые 60 секунд
     useEffect(() => {
         if (!keycloak?.authenticated) return;
 
         const interval = setInterval(() => {
-            keycloak.updateToken(70)
-                .then(refreshed => {
-                    if (refreshed) {
-                        // Только если токен реально обновился
-                        setToken(current => current !== keycloak.token ? keycloak.token : current);
-                    }
-                })
-                .catch(() => console.warn('Failed to refresh token'));
+            keycloak.updateToken(70).then(refreshed => {
+                if (refreshed) setToken(keycloak.token);
+            }).catch(() => console.warn('Failed to refresh token'));
         }, 60000);
 
         return () => clearInterval(interval);
-    }, [keycloak?.authenticated, keycloak]);
+    }, [keycloak]);
 
     return (
-        <div>
-            <Header keycloak={keycloak} />
-            <PublicContent />
-        </div>
+        <BrowserRouter>
+            <div>
+                <Header keycloak={keycloak} />
+                <Routes>
+                    <Route path="/" element={<PublicContent />} />
+                    <Route path="/template/:id" element={<TemplateDetail token={token} />} />
+                </Routes>
+            </div>
+        </BrowserRouter>
     );
 }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getConfig } from '../config';
+import { Link } from 'react-router-dom';
 
 export default function PublicContent() {
     const [templates, setTemplates] = useState([]);
@@ -29,24 +30,38 @@ export default function PublicContent() {
 
             <div className="project-grid">
                 {templates.map(t => (
-                    <div key={t.id} className="project-card">
-                        <div className="project-image">
-                            {t.previewUrl ? (
-                                <img src={t.previewUrl} alt={t.title} />
-                            ) : (
-                                <div style={{ background: '#eee', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    Нет фото
-                                </div>
-                            )}
+                    <Link
+                        key={t.id}
+                        to={`/template/${t.id}`}
+                        style={{ textDecoration: 'none', color: 'inherit' }}
+                    >
+                        <div className="project-card" style={{ cursor: 'pointer' }}>
+                            <div className="project-image">
+                                {t.previewUrl ? (
+                                    <img src={t.previewUrl} alt={t.title} />
+                                ) : (
+                                    <div style={{
+                                        background: '#eee',
+                                        height: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: '#999',
+                                        fontSize: '1.1rem'
+                                    }}>
+                                        Нет фото
+                                    </div>
+                                )}
+                            </div>
+                            <div className="project-info">
+                                <h3>{t.title}</h3>
+                                <p><strong>Стиль:</strong> {t.style || '—'}</p>
+                                <p><strong>Площадь:</strong> {t.areaM2} м²</p>
+                                <p><strong>Комнаты:</strong> {t.rooms}</p>
+                                <p className="price">{Number(t.basePrice).toLocaleString()} ₽</p>
+                            </div>
                         </div>
-                        <div className="project-info">
-                            <h3>{t.title}</h3>
-                            <p><strong>Стиль:</strong> {t.style || '—'}</p>
-                            <p><strong>Площадь:</strong> {t.areaM2} м²</p>
-                            <p><strong>Комнаты:</strong> {t.rooms}</p>
-                            <p className="price">{Number(t.basePrice).toLocaleString()} ₽</p>
-                        </div>
-                    </div>
+                    </Link>
                 ))}
             </div>
 
