@@ -1,29 +1,73 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { jwtDecode } from 'jwt-decode';
 import CreateTemplateModal from './CreateTemplateModal';
+import LoginModal from './LoginModal';
 
-export default function Header({ keycloak }) {
-    const [showCreateModal, setShowCreateModal] = useState(false);
+export default function Header({ token, setToken }) {
+    const [user, setUser] = useState(null);
+    const [showLogin, setShowLogin] = useState(false);
+    const [showCreate, setShowCreate] = useState(false);
 
-    const handleLogin = () => keycloak.login();
-    const handleLogout = () => keycloak.logout({ redirectUri: window.location.origin });
+    useEffect(() => {
+        if (token) {
+            try {
+                const decoded = jwtDecode(token);
 
-    const roles = keycloak.tokenParsed?.roles || [];
-    const isAdmin = roles.includes('ROLE_hackathon.admin') || roles.includes('ROLE_hackathon.manager');
+                // Собираем роли отовсюду — теперь точно найдём!
+                const realmRoles = decoded.realm_access?.roles || [];
+                const clientRoles = decoded.resource_access?.['react-app']?.roles || [];
+                const rootRoles = decoded.roles || []; // ← это у тебя с ROLE_
+
+                const allRoles = [...new Set([...realmRoles, ...clientRoles, ...rootRoles])];
+
+                setUser({
+                    username: decoded.preferred_username || decoded.name || 'User',
+                    roles: allRoles
+                });
+            } catch (err) {
+                console.error('Token decode error:', err);
+                localStorage.clear();
+                setUser(null);
+            }
+        } else {
+            setUser(null);
+        }
+    }, [token]);
+
+    const isAdmin = (() => {
+        if (!user?.roles) return false;
+        const hasAdmin = user.roles.includes('ROLE_hackathon.admin');
+        const hasManager = user.roles.includes('ROLE_hackathon.manager');
+        console.log('Роли пользователя:', user.roles); // ← ВКЛЮЧИ ЭТУ СТРОКУ!
+        console.log('isAdmin?', hasAdmin || hasManager);
+        return hasAdmin || hasManager;
+    })();
+
+    const handleLogout = () => {
+        localStorage.clear();
+        window.location.reload();
+    };
+
+    const handleLoginSuccess = () => {
+        setToken(localStorage.getItem('access_token'));
+        setShowLogin(false);
+        window.location.reload();
+    };
 
     return (
         <header className="main-nav">
             <div className="nav-logo">Мосстройинформ</div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                {keycloak.authenticated ? (
+                {user ? (
                     <>
                         <div className="user-avatar">
-                            {keycloak.tokenParsed?.preferred_username?.[0].toUpperCase()}
+                            {user.username[0].toUpperCase()}
                         </div>
-                        <span>{keycloak.tokenParsed?.preferred_username}</span>
+                        <span>{user.username}</span>
 
                         {isAdmin && (
-                            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+                            <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
                                 Создать шаблон
                             </button>
                         )}
@@ -33,16 +77,23 @@ export default function Header({ keycloak }) {
                         </button>
                     </>
                 ) : (
-                    <button onClick={handleLogin} className="btn btn-primary">
+                    <button onClick={() => setShowLogin(true)} className="btn btn-primary">
                         Войти
                     </button>
                 )}
             </div>
 
-            {showCreateModal && (
+            {showLogin && (
+                <LoginModal
+                    onClose={() => setShowLogin(false)}
+                    onSuccess={handleLoginSuccess}
+                />
+            )}
+
+            {showCreate && (
                 <CreateTemplateModal
-                    token={keycloak.token}
-                    onClose={() => setShowCreateModal(false)}
+                    token={token}
+                    onClose={() => setShowCreate(false)}
                     onSuccess={() => window.location.reload()}
                 />
             )}
