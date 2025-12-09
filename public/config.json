@@ -1,6 +1,5 @@
 {
   "API_BASE_URL": "http://localhost:8091",
   "TEMPLATES_LIST_URL": "/api/templates",
-  "TEMPLATES_CREATE_URL": "/api/templates",
-  "FILES_BASE_URL": "/files"
+  "TEMPLATES_CREATE_URL": "/api/templates"
 }

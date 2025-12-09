@@ -1,8 +1,7 @@
 let config = {
-    API_BASE_URL: 'http://localhost:8091',
-    TEMPLATES_LIST_URL: '/api/templates',
-    TEMPLATES_CREATE_URL: '/api/templates',
-    FILES_BASE_URL: '/files'
+    API_BASE_URL: '',
+    TEMPLATES_LIST_URL: '',
+    TEMPLATES_CREATE_URL: '',
 };
 
 export const loadConfig = async () => {

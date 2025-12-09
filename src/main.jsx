@@ -2,12 +2,15 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { loadAuthConfig } from './auth-config';
 import { loadConfig } from './config';
 
-loadConfig(); // Грузим в фоне, не блокируем рендер
-
-ReactDOM.createRoot(document.getElementById('root')).render(
-    <React.StrictMode>
-        <App />
-    </React.StrictMode>
-);
+Promise.all([loadAuthConfig(), loadConfig()])
+    .then(() => {
+        ReactDOM.createRoot(document.getElementById('root')).render(
+            <React.StrictMode>
+                <App />
+            </React.StrictMode>
+        );
+    })
+    .catch(console.error);

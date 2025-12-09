@@ -1,7 +1,7 @@
 let authConfig = {
-    KEYCLOAK_URL: 'http://localhost:9090/',
-    REALM: 'hackathon',
-    CLIENT_ID: 'react-app'
+    KEYCLOAK_URL: '',
+    REALM: '',
+    CLIENT_ID: ''
 };
 
 export const loadAuthConfig = async () => {
