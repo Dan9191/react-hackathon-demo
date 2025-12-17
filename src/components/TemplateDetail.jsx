@@ -1,89 +1,218 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getConfig } from '../config';
+import OrderModal from './OrderModal';
 
-export default function TemplateDetail({ token }) {
+export default function TemplateDetail({ token, setToken }) {
     const { id } = useParams();
     const [template, setTemplate] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [showOrderModal, setShowOrderModal] = useState(false);
 
     useEffect(() => {
         const { API_BASE_URL } = getConfig();
         fetch(`${API_BASE_URL}/api/templates/${id}`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         })
-            .then(r => r.json())
+            .then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            })
             .then(data => {
                 setTemplate(data);
                 setLoading(false);
             })
             .catch(err => {
                 console.error(err);
+                setError('Не удалось загрузить информацию о шаблоне');
                 setLoading(false);
             });
     }, [id, token]);
 
-    if (loading) return <div style={{ padding: '4rem', textAlign: 'center' }}>Загрузка...</div>;
-    if (!template) return <div style={{ padding: '4rem', textAlign: 'center' }}>Шаблон не найден</div>;
+    const handleOrderClick = () => {
+        if (!token) {
+            alert('Для оформления заказа необходимо авторизоваться');
+            return;
+        }
+        setShowOrderModal(true);
+    };
+
+    if (loading) return (
+        <div className="loading">
+            <div className="loading-spinner"></div>
+            <div className="loading-text">Загрузка информации...</div>
+        </div>
+    );
+
+    if (error) return (
+        <div className="empty-state">
+            <div className="empty-icon">⚠️</div>
+            <h3>Ошибка загрузки</h3>
+            <p>{error}</p>
+            <Link to="/" className="btn btn-primary">
+                Вернуться к каталогу
+            </Link>
+        </div>
+    );
+
+    if (!template) return (
+        <div className="empty-state">
+            <div className="empty-icon">❌</div>
+            <h3>Шаблон не найден</h3>
+            <p>Запрашиваемый шаблон не существует или был удален</p>
+            <Link to="/" className="btn btn-primary">
+                Вернуться к каталогу
+            </Link>
+        </div>
+    );
 
     const previews = template.files?.filter(f => f.fileRole === 'preview' || f.fileRole === 'gallery') || [];
     const documents = template.files?.filter(f => f.fileRole === 'document') || [];
 
     return (
-        <div className="container" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-            <Link to="/" style={{ color: '#2196F3', textDecoration: 'none', marginBottom: '1rem', display: 'inline-block' }}>
+        <div className="template-container">
+            <Link to="/" className="back-link">
                 ← Назад к каталогу
             </Link>
 
-            <h1 style={{ fontSize: '2.5rem', margin: '1rem 0', color: '#2196F3' }}>{template.title}</h1>
+            <div className="template-header">
+                <h1>{template.title}</h1>
+                {template.description && (
+                    <p className="template-description">{template.description}</p>
+                )}
+            </div>
 
-            {template.description && <p style={{ fontSize: '1.2rem', color: '#555' }}>{template.description}</p>}
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', margin: '2rem 0' }}>
-                <div>
-                    <strong>Стиль:</strong> {template.style || '—'}
+            <div className="template-stats">
+                <div className="stat-item">
+                    <div className="stat-icon">🎨</div>
+                    <div className="stat-content">
+                        <h3>Стиль</h3>
+                        <p>{template.style || 'Не указан'}</p>
+                    </div>
                 </div>
-                <div>
-                    <strong>Площадь:</strong> {template.areaM2} м²
+                <div className="stat-item">
+                    <div className="stat-icon">📏</div>
+                    <div className="stat-content">
+                        <h3>Площадь</h3>
+                        <p>{template.areaM2} м²</p>
+                    </div>
                 </div>
-                <div>
-                    <strong>Комнаты:</strong> {template.rooms}
+                <div className="stat-item">
+                    <div className="stat-icon">🚪</div>
+                    <div className="stat-content">
+                        <h3>Комнаты</h3>
+                        <p>{template.rooms}</p>
+                    </div>
                 </div>
-                <div>
-                    <strong>Цена:</strong> {Number(template.basePrice).toLocaleString()} ₽
+                <div className="stat-item">
+                    <div className="stat-icon">💰</div>
+                    <div className="stat-content">
+                        <h3>Базовая цена</h3>
+                        <p>{Number(template.basePrice).toLocaleString('ru-RU')} ₽</p>
+                    </div>
+                </div>
+                <div className="stat-item">
+                    <div className="stat-icon">⚡</div>
+                    <div className="stat-content">
+                        <h3>Статус</h3>
+                        <p>{template.isActive ? '✅ Активен' : '⏸️ Неактивен'}</p>
+                    </div>
                 </div>
             </div>
 
+            {/* Кнопка заказа */}
+            <div style={{
+                textAlign: 'center',
+                margin: '2rem 0',
+                padding: '2rem',
+                background: 'linear-gradient(135deg, #e3f2fd, #bbdefb)',
+                borderRadius: '16px'
+            }}>
+                <h2 style={{ color: '#1a237e', marginBottom: '1rem' }}>
+                    🏡 Заинтересовал этот проект?
+                </h2>
+                <p style={{ color: '#546e7a', marginBottom: '1.5rem' }}>
+                    Оформите заявку на строительство дома по этому проекту
+                </p>
+                <button
+                    onClick={handleOrderClick}
+                    className="btn btn-primary"
+                    style={{
+                        padding: '16px 40px',
+                        fontSize: '1.2rem',
+                        fontWeight: 700
+                    }}
+                >
+                    {token ? '📝 Оформить заказ' : '🔑 Войти для оформления заказа'}
+                </button>
+                {!token && (
+                    <p style={{ marginTop: '1rem', color: '#666', fontSize: '0.9rem' }}>
+                        После авторизации вы сможете оформить заказ
+                    </p>
+                )}
+            </div>
+
             {previews.length > 0 && (
-                <>
-                    <h2 style={{ margin: '2rem 0 1rem', color: '#2196F3' }}>Фотографии</h2>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                <div className="gallery">
+                    <h2><span>🖼️</span> Фотографии проекта</h2>
+                    <div className="gallery-grid">
                         {previews.map(file => (
-                            <a key={file.id} href={file.url} target="_blank" rel="noopener noreferrer">
-                                <img
-                                    src={file.url}
+                            <a 
+                                key={file.id} 
+                                href={file.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="gallery-item"
+                            >
+                                <img 
+                                    src={file.url} 
                                     alt={file.filename}
-                                    style={{ width: '100%', height: '250px', objectFit: 'cover', borderRadius: '12px' }}
+                                    loading="lazy"
                                 />
                             </a>
                         ))}
                     </div>
-                </>
+                </div>
             )}
 
             {documents.length > 0 && (
-                <>
-                    <h2 style={{ margin: '2rem 0 1rem', color: '#2196F3' }}>Документы</h2>
-                    <ul style={{ listStyle: 'none', padding: 0 }}>
+                <div className="documents">
+                    <h2><span>📄</span> Документы</h2>
+                    <ul className="document-list">
                         {documents.map(file => (
-                            <li key={file.id} style={{ margin: '0.5rem 0' }}>
-                                <a href={file.url} target="_blank" rel="noopener noreferrer" style={{ color: '#2196F3' }}>
+                            <li key={file.id} className="document-item">
+                                <div className="document-icon">
+                                    {file.filename.endsWith('.pdf') ? '📄' : '📋'}
+                                </div>
+                                <a 
+                                    href={file.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="document-link"
+                                >
                                     {file.filename}
                                 </a>
+                                <span className="document-size">
+                                    {file.fileSize ? `(${(file.fileSize / 1024).toFixed(1)} KB)` : ''}
+                                </span>
                             </li>
                         ))}
                     </ul>
-                </>
+                </div>
+            )}
+
+            {showOrderModal && token && (
+                <OrderModal
+                    token={token}
+                    templateId={template.id}
+                    templateTitle={template.title}
+                    onClose={() => setShowOrderModal(false)}
+                    onSuccess={() => {
+                        setShowOrderModal(false);
+                        alert('Заказ успешно создан! С вами свяжется наш менеджер.');
+                    }}
+                />
             )}
         </div>
     );
