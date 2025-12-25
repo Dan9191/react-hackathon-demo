@@ -28,12 +28,12 @@ export default function OrderDetailAdmin({ token }) {
     const fetchOrderDetails = async () => {
         try {
             const { API_BASE_URL } = getConfig();
-            
+
             // Основная информация о заказе
             const orderRes = await fetch(`${API_BASE_URL}/api/orders/${orderId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
+
             if (!orderRes.ok) throw new Error('Заказ не найден');
             const orderData = await orderRes.json();
             setOrder(orderData);
@@ -42,7 +42,7 @@ export default function OrderDetailAdmin({ token }) {
             const statusRes = await fetch(`${API_BASE_URL}/api/orders/${orderId}/status`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
+
             if (statusRes.ok) {
                 const statusData = await statusRes.json();
                 setStatuses(statusData);
@@ -52,7 +52,7 @@ export default function OrderDetailAdmin({ token }) {
             const stagesRes = await fetch(`${API_BASE_URL}/api/orders/${orderId}/stages`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
+
             if (stagesRes.ok) {
                 const stagesData = await stagesRes.json();
                 setStages(stagesData);
@@ -83,7 +83,7 @@ export default function OrderDetailAdmin({ token }) {
             });
 
             if (!response.ok) throw new Error('Ошибка добавления статуса');
-            
+
             alert('Статус добавлен');
             setShowAddStatus(false);
             setNewStatus({ statusType: '', comment: '' });
@@ -114,7 +114,7 @@ export default function OrderDetailAdmin({ token }) {
             });
 
             if (!response.ok) throw new Error('Ошибка добавления этапа');
-            
+
             alert('Этап добавлен');
             setShowAddStage(false);
             setNewStage({
@@ -142,7 +142,7 @@ export default function OrderDetailAdmin({ token }) {
             });
 
             if (!response.ok) throw new Error('Ошибка обновления этапа');
-            
+
             alert('Этап обновлен');
             fetchOrderDetails();
         } catch (err) {
@@ -225,9 +225,9 @@ export default function OrderDetailAdmin({ token }) {
                             <div className="status-header">
                                 <span className="status-type">
                                     {order.currentStatus.statusType === 'new' ? '🆕 Новый' :
-                                     order.currentStatus.statusType === 'in_progress' ? '🔄 В работе' :
-                                     order.currentStatus.statusType === 'completed' ? '✅ Завершен' :
-                                     order.currentStatus.statusType === 'cancelled' ? '❌ Отменен' : order.currentStatus.statusType}
+                                        order.currentStatus.statusType === 'in_progress' ? '🔄 В работе' :
+                                            order.currentStatus.statusType === 'completed' ? '✅ Завершен' :
+                                                order.currentStatus.statusType === 'cancelled' ? '❌ Отменен' : order.currentStatus.statusType}
                                 </span>
                                 <span className="status-date">
                                     {new Date(order.currentStatus.createdAt).toLocaleDateString('ru-RU')}
@@ -239,7 +239,7 @@ export default function OrderDetailAdmin({ token }) {
                             </p>
                         </div>
                     )}
-                    <button 
+                    <button
                         onClick={() => setShowAddStatus(true)}
                         className="btn btn-outline"
                     >
@@ -252,14 +252,14 @@ export default function OrderDetailAdmin({ token }) {
             <div className="management-section">
                 <div className="section-header">
                     <h3>📈 История статусов</h3>
-                    <button 
+                    <button
                         onClick={() => setShowAddStatus(true)}
                         className="btn btn-primary"
                     >
                         ➕ Добавить статус
                     </button>
                 </div>
-                
+
                 <div className="status-history">
                     {statuses.map(status => (
                         <div key={status.id} className="status-item" style={{
@@ -277,7 +277,7 @@ export default function OrderDetailAdmin({ token }) {
                             </p>
                         </div>
                     ))}
-                    
+
                     {statuses.length === 0 && (
                         <p className="empty-message">Статусы еще не добавлены</p>
                     )}
@@ -288,14 +288,14 @@ export default function OrderDetailAdmin({ token }) {
             <div className="management-section">
                 <div className="section-header">
                     <h3>🏗️ Этапы строительства</h3>
-                    <button 
+                    <button
                         onClick={() => setShowAddStage(true)}
                         className="btn btn-primary"
                     >
                         ➕ Добавить этап
                     </button>
                 </div>
-                
+
                 <div className="stages-grid">
                     {stages.map(stage => (
                         <div key={stage.id} className="stage-card">
@@ -306,13 +306,13 @@ export default function OrderDetailAdmin({ token }) {
                                     background: getStageStatusColor(stage.status)
                                 }}>
                                     {stage.status === 'completed' ? '✅ Завершен' :
-                                     stage.status === 'in_progress' ? '🔄 В процессе' :
-                                     stage.status === 'delayed' ? '⚠️ Задержан' : '⏸️ Не начат'}
+                                        stage.status === 'in_progress' ? '🔄 В процессе' :
+                                            stage.status === 'delayed' ? '⚠️ Задержан' : '⏸️ Не начат'}
                                 </span>
                             </div>
-                            
+
                             <p className="stage-description">{stage.description}</p>
-                            
+
                             <div className="stage-dates">
                                 <div className="date-item">
                                     <span className="date-label">Начало:</span>
@@ -335,24 +335,24 @@ export default function OrderDetailAdmin({ token }) {
                                     </div>
                                 )}
                             </div>
-                            
+
                             <div className="stage-progress">
                                 <div className="progress-info">
                                     <span>Прогресс:</span>
                                     <span>{stage.progress || 0}%</span>
                                 </div>
                                 <div className="progress-bar">
-                                    <div 
+                                    <div
                                         className="progress-fill"
                                         style={{ width: `${stage.progress || 0}%` }}
                                     ></div>
                                 </div>
                             </div>
-                            
+
                             <div className="stage-actions">
                                 {stage.status !== 'completed' && (
                                     <>
-                                        <button 
+                                        <button
                                             onClick={() => handleUpdateStage(stage.id, {
                                                 status: 'in_progress'
                                             })}
@@ -360,7 +360,7 @@ export default function OrderDetailAdmin({ token }) {
                                         >
                                             🚀 Начать
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => handleUpdateStage(stage.id, {
                                                 progress: Math.min(100, (stage.progress || 0) + 25)
                                             })}
@@ -368,7 +368,7 @@ export default function OrderDetailAdmin({ token }) {
                                         >
                                             📈 +25%
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => handleUpdateStage(stage.id, {
                                                 status: 'completed',
                                                 actualEndDate: new Date().toISOString(),
@@ -386,7 +386,7 @@ export default function OrderDetailAdmin({ token }) {
                             </div>
                         </div>
                     ))}
-                    
+
                     {stages.length === 0 && (
                         <p className="empty-message">Этапы еще не добавлены</p>
                     )}
@@ -424,9 +424,9 @@ export default function OrderDetailAdmin({ token }) {
                         <div className="modal-body">
                             <div className="form-group">
                                 <label>Тип статуса:</label>
-                                <select 
+                                <select
                                     value={newStatus.statusType}
-                                    onChange={(e) => setNewStatus({...newStatus, statusType: e.target.value})}
+                                    onChange={(e) => setNewStatus({ ...newStatus, statusType: e.target.value })}
                                     className="form-control"
                                 >
                                     <option value="">Выберите статус</option>
@@ -438,22 +438,22 @@ export default function OrderDetailAdmin({ token }) {
                             </div>
                             <div className="form-group">
                                 <label>Комментарий:</label>
-                                <textarea 
+                                <textarea
                                     value={newStatus.comment}
-                                    onChange={(e) => setNewStatus({...newStatus, comment: e.target.value})}
+                                    onChange={(e) => setNewStatus({ ...newStatus, comment: e.target.value })}
                                     placeholder="Обоснование изменения статуса..."
                                     className="form-control"
                                     rows="3"
                                 />
                             </div>
                             <div className="modal-actions">
-                                <button 
+                                <button
                                     onClick={handleAddStatus}
                                     className="btn btn-primary"
                                 >
                                     Добавить статус
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setShowAddStatus(false)}
                                     className="btn btn-outline"
                                 >
@@ -475,20 +475,20 @@ export default function OrderDetailAdmin({ token }) {
                         <div className="modal-body">
                             <div className="form-group">
                                 <label>Тип этапа:</label>
-                                <input 
+                                <input
                                     type="text"
                                     value={newStage.stageType}
-                                    onChange={(e) => setNewStage({...newStage, stageType: e.target.value})}
+                                    onChange={(e) => setNewStage({ ...newStage, stageType: e.target.value })}
                                     placeholder="foundation, walls, roof..."
                                     className="form-control"
                                 />
                             </div>
                             <div className="form-group">
                                 <label>Название этапа:</label>
-                                <input 
+                                <input
                                     type="text"
                                     value={newStage.stageName}
-                                    onChange={(e) => setNewStage({...newStage, stageName: e.target.value})}
+                                    onChange={(e) => setNewStage({ ...newStage, stageName: e.target.value })}
                                     placeholder="Заливка фундамента"
                                     className="form-control"
                                     required
@@ -496,9 +496,9 @@ export default function OrderDetailAdmin({ token }) {
                             </div>
                             <div className="form-group">
                                 <label>Описание:</label>
-                                <textarea 
+                                <textarea
                                     value={newStage.description}
-                                    onChange={(e) => setNewStage({...newStage, description: e.target.value})}
+                                    onChange={(e) => setNewStage({ ...newStage, description: e.target.value })}
                                     placeholder="Подготовка основания, установка опалубки..."
                                     className="form-control"
                                     rows="3"
@@ -506,21 +506,21 @@ export default function OrderDetailAdmin({ token }) {
                             </div>
                             <div className="form-group">
                                 <label>Плановая дата завершения:</label>
-                                <input 
+                                <input
                                     type="date"
                                     value={newStage.plannedEndDate}
-                                    onChange={(e) => setNewStage({...newStage, plannedEndDate: e.target.value})}
+                                    onChange={(e) => setNewStage({ ...newStage, plannedEndDate: e.target.value })}
                                     className="form-control"
                                 />
                             </div>
                             <div className="modal-actions">
-                                <button 
+                                <button
                                     onClick={handleAddStage}
                                     className="btn btn-primary"
                                 >
                                     Добавить этап
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setShowAddStage(false)}
                                     className="btn btn-outline"
                                 >

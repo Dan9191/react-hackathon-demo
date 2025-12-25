@@ -5,13 +5,14 @@
     box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
     height: 100%;
 }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    background: #e4eeff;
     min-height: 100vh;
     color: #333;
     line-height: 1.6;
@@ -45,7 +46,7 @@ body {
     background: white;
     border-radius: 16px;
     overflow: hidden;
-    box-shadow: 
+    box-shadow:
         0 6px 15px rgba(0, 0, 0, 0.08),
         0 0 0 1px rgba(0, 0, 0, 0.05);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -58,7 +59,7 @@ body {
 
 .project-card:hover {
     transform: translateY(-8px);
-    box-shadow: 
+    box-shadow:
         0 20px 40px rgba(33, 150, 243, 0.15),
         0 0 0 1px rgba(33, 150, 243, 0.2);
 }
@@ -76,7 +77,7 @@ body {
     left: 0;
     right: 0;
     height: 50%;
-    background: linear-gradient(to top, rgba(0,0,0,0.1), transparent);
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.1), transparent);
 }
 
 .project-image img {
@@ -355,6 +356,7 @@ body {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -362,7 +364,9 @@ body {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Загрузка */
@@ -430,44 +434,44 @@ footer a:hover {
         gap: 1.5rem;
         padding: 1.5rem 1rem;
     }
-    
+
     .project-image {
         height: 180px;
     }
-    
+
     .template-container {
         padding: 1.5rem;
         margin: 1rem;
     }
-    
+
     .template-header h1 {
         font-size: 2rem;
     }
-    
+
     .template-stats {
         grid-template-columns: 1fr;
         gap: 1rem;
         padding: 1.5rem;
     }
-    
+
     .gallery-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .btn {
         padding: 10px 20px;
         font-size: 0.9rem;
     }
-    
+
     footer {
         padding: 2rem 1rem 1.5rem;
     }
-    
+
     .footer-grid {
         grid-template-columns: 1fr;
         gap: 1.5rem;
     }
-    
+
     .footer-bottom {
         flex-direction: column;
         text-align: center;
@@ -479,15 +483,15 @@ footer a:hover {
     .project-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .project-card {
         margin: 0 0.5rem;
     }
-    
+
     .template-header h1 {
         font-size: 1.8rem;
     }
-    
+
     .footer-bottom {
         font-size: 0.8rem;
     }
@@ -498,6 +502,7 @@ footer a:hover {
         opacity: 0;
         transform: translateY(30px) scale(0.95);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -505,7 +510,9 @@ footer a:hover {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .progress-bar {
@@ -539,17 +546,17 @@ footer a:hover {
     .order-card {
         margin: 0 0.5rem;
     }
-    
+
     .order-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 1rem;
     }
-    
+
     .order-actions {
         flex-direction: column;
     }
-    
+
     .order-actions .btn {
         width: 100%;
         margin-bottom: 0.5rem;
@@ -940,10 +947,21 @@ footer a:hover {
     color: white;
 }
 
-.stage-status.completed { background: #4CAF50; }
-.stage-status.in_progress { background: #FF9800; }
-.stage-status.delayed { background: #F44336; }
-.stage-status.not_started { background: #9E9E9E; }
+.stage-status.completed {
+    background: #4CAF50;
+}
+
+.stage-status.in_progress {
+    background: #FF9800;
+}
+
+.stage-status.delayed {
+    background: #F44336;
+}
+
+.stage-status.not_started {
+    background: #9E9E9E;
+}
 
 .stage-dates {
     display: flex;
@@ -1185,7 +1203,8 @@ footer a:hover {
     margin-bottom: 2rem;
 }
 
-.overview-card, .current-status-card {
+.overview-card,
+.current-status-card {
     background: white;
     border-radius: 16px;
     padding: 1.5rem;
@@ -1403,6 +1422,7 @@ footer a:hover {
         opacity: 0;
         transform: translateY(-20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1414,42 +1434,42 @@ footer a:hover {
     .admin-tabs {
         flex-direction: column;
     }
-    
+
     .tab-btn {
         width: 100%;
         text-align: center;
     }
-    
+
     .applications-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .users-table {
         display: block;
         overflow-x: auto;
     }
-    
+
     .order-overview {
         grid-template-columns: 1fr;
     }
-    
+
     .overview-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .stages-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .modal {
         width: 95%;
         margin: 1rem;
     }
-    
+
     .form-actions {
         flex-direction: column;
     }
-    
+
     .form-actions .btn {
         width: 100%;
     }

@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getConfig } from '../config';
 
 export default function UserOrders({ token }) {
+    const navigate = useNavigate();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
+    const [pageSize, setPageSize] = useState(10);
 
     useEffect(() => {
         if (!token) {
@@ -14,56 +19,85 @@ export default function UserOrders({ token }) {
             return;
         }
 
-        fetchOrders();
-    }, [token]);
+        fetchOrders(page, pageSize);
+    }, [token, page, pageSize]);
 
-    const fetchOrders = async () => {
+    const fetchOrders = async (currentPage = 0, size = 10) => {
         setLoading(true);
         setError('');
-        
+
         try {
             const { API_BASE_URL } = getConfig();
-            const response = await fetch(`${API_BASE_URL}/api/orders`, {
+
+            const url = new URL(`${API_BASE_URL}/api/orders`);
+            url.searchParams.append('page', currentPage.toString());
+            url.searchParams.append('pageSize', size.toString());
+
+            console.log('Fetching orders from:', url.toString());
+
+            const response = await fetch(url.toString(), {
+                method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
                 }
             });
-
+            console.log(response);
             if (!response.ok) {
-                throw new Error(`Ошибка ${response.status}`);
+                let errorText = `HTTP ${response.status}`;
+                try {
+                    const errorData = await response.text();
+                    errorText += `: ${errorData}`;
+                } catch (e) {
+                }
+                throw new Error(errorText);
             }
 
             const data = await response.json();
-            setOrders(Array.isArray(data) ? data : []);
+            console.log('Orders data:', data);
+
+            setOrders(Array.isArray(data.items) ? data.items : []);
+            setTotalPages(Math.ceil(data.total / data.pageSize) || 0);
+            setTotalElements(data.total || 0);
+            setPageSize(data.pageSize || 10);
         } catch (err) {
             console.error('Ошибка загрузки заказов:', err);
-            setError('Не удалось загрузить список заказов');
+            setError(`Не удалось загрузить список заказов: ${err.message}`);
         } finally {
             setLoading(false);
         }
     };
 
     const getStatusColor = (statusType) => {
-        switch (statusType) {
+        if (!statusType) return '#9E9E9E';
+
+        const status = statusType.toLowerCase();
+        switch (status) {
             case 'new':
-                return '#2196F3'; // синий
+                return '#2196F3'; // синий - новый
             case 'in_progress':
-                return '#FF9800'; // оранжевый
+                return '#FF9800'; // оранжевый - в работе
+            case 'on_hold':
+                return '#9C27B0'; // фиолетовый - приостановлен
             case 'completed':
-                return '#4CAF50'; // зеленый
+                return '#4CAF50'; // зеленый - завершен
             case 'cancelled':
-                return '#F44336'; // красный
+                return '#F44336'; // красный - отменен
             default:
                 return '#9E9E9E'; // серый
         }
     };
 
     const getStatusText = (statusType) => {
-        switch (statusType) {
+        if (!statusType) return 'Неизвестно';
+
+        const status = statusType.toLowerCase();
+        switch (status) {
             case 'new':
                 return 'Новый';
             case 'in_progress':
                 return 'В работе';
+            case 'on_hold':
+                return 'Приостановлен';
             case 'completed':
                 return 'Завершен';
             case 'cancelled':
@@ -73,18 +107,118 @@ export default function UserOrders({ token }) {
         }
     };
 
-    const getStageStatusText = (status) => {
+    const getStageColor = (stageStatus) => {
+        if (!stageStatus) return '#9E9E9E';
+
+        const status = stageStatus.toLowerCase();
+        switch (status) {
+            case 'not_started':
+                return '#757575'; // серый - не начат
+            case 'in_progress':
+                return '#FF9800'; // оранжевый - в работе
+            case 'completed':
+                return '#4CAF50'; // зеленый - завершен
+            case 'delayed':
+                return '#F44336'; // красный - задержан
+            default:
+                return '#9E9E9E'; // серый
+        }
+    };
+
+    const getStageStatusText = (stageStatus) => {
+        if (!stageStatus) return 'Не начат';
+
+        const status = stageStatus.toLowerCase();
         switch (status) {
             case 'not_started':
                 return 'Не начат';
             case 'in_progress':
-                return 'В процессе';
+                return 'В работе';
             case 'completed':
                 return 'Завершен';
             case 'delayed':
                 return 'Задержан';
             default:
-                return status;
+                return stageStatus;
+        }
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'Не указано';
+
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return 'Неверная дата';
+
+            return date.toLocaleDateString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return 'Ошибка даты';
+        }
+    };
+
+    const formatPrice = (price) => {
+        if (!price) return 'Не указана';
+
+        const num = parseFloat(price);
+        if (isNaN(num)) return price;
+
+        return new Intl.NumberFormat('ru-RU', {
+            style: 'currency',
+            currency: 'RUB',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(num);
+    };
+
+    const calculateProgress = (stage) => {
+        if (!stage) return 0;
+
+        if (stage.progress !== undefined) {
+            return Math.min(Math.max(stage.progress, 0), 100);
+        }
+
+        // Рассчитываем прогресс на основе дат
+        if (stage.startDate && stage.plannedEndDate && stage.status === 'in_progress') {
+            const start = new Date(stage.startDate).getTime();
+            const plannedEnd = new Date(stage.plannedEndDate).getTime();
+            const now = new Date().getTime();
+
+            if (start && plannedEnd && now > start) {
+                const total = plannedEnd - start;
+                const elapsed = now - start;
+                return Math.min(Math.round((elapsed / total) * 100), 95);
+            }
+        }
+
+        return stage.status === 'completed' ? 100 : 0;
+    };
+
+    const handlePageChange = (newPage) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            setPage(newPage);
+        }
+    };
+
+    const handlePageSizeChange = (e) => {
+        const newSize = parseInt(e.target.value);
+        setPageSize(newSize);
+        setPage(1);
+    };
+
+    const handleRetry = () => {
+        setError('');
+        fetchOrders(page, pageSize);
+    };
+
+    const handleTabChange = (tab) => {
+        if (tab === 'applications') {
+            navigate('/profile/applications');
         }
     };
 
@@ -104,77 +238,99 @@ export default function UserOrders({ token }) {
                 <p style={{ color: '#546e7a', marginBottom: '2rem' }}>
                     Для просмотра заказов необходимо войти в систему
                 </p>
-                <Link to="/" className="btn btn-primary">
+                <Link to="/" style={{
+                    display: 'inline-block',
+                    padding: '12px 24px',
+                    background: 'linear-gradient(135deg, #2196F3, #1976D2)',
+                    color: 'white',
+                    textDecoration: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    transition: 'all 0.3s ease'
+                }}>
                     На главную
                 </Link>
             </div>
         );
     }
 
-    if (loading) {
-        return (
-            <div style={{
-                maxWidth: '1200px',
-                margin: '2rem auto',
-                padding: '3rem',
-                textAlign: 'center'
-            }}>
-                <div className="loading-spinner" style={{ margin: '0 auto 1rem' }}></div>
-                <div className="loading-text">Загрузка заказов...</div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div style={{
-                maxWidth: '800px',
-                margin: '2rem auto',
-                padding: '3rem',
-                textAlign: 'center',
-                background: 'white',
-                borderRadius: '16px',
-                boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)'
-            }}>
-                <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>⚠️</div>
-                <h2 style={{ color: '#1a237e', marginBottom: '1rem' }}>Ошибка загрузки</h2>
-                <p style={{ color: '#546e7a', marginBottom: '2rem' }}>{error}</p>
-                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                    <button onClick={fetchOrders} className="btn btn-primary">
-                        Попробовать снова
-                    </button>
-                    <Link to="/" className="btn btn-outline">
-                        На главную
-                    </Link>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div style={{
-            maxWidth: '1200px',
-            margin: '2rem auto',
-            padding: '0 1rem'
-        }}>
-            <div style={{ marginBottom: '2rem' }}>
-                <Link to="/" className="back-link">
-                    ← На главную
-                </Link>
-                <h1 style={{ 
-                    fontSize: '2rem', 
-                    color: '#1a237e',
-                    margin: '1rem 0',
-                    fontWeight: 700
-                }}>
-                    👤 Личный кабинет
-                </h1>
-                <p style={{ color: '#546e7a' }}>
-                    Здесь отображаются все ваши заказы на строительство домов
-                </p>
-            </div>
 
-            {orders.length === 0 ? (
+        }}>
+
+            {loading ? (
+                <div style={{
+                    maxWidth: '1200px',
+                    margin: '2rem auto',
+                    padding: '3rem',
+                    textAlign: 'center'
+                }}>
+                    <div style={{
+                        width: '60px',
+                        height: '60px',
+                        border: '4px solid #e3f2fd',
+                        borderTopColor: '#2196F3',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                        margin: '0 auto 1rem'
+                    }}></div>
+                    <div style={{ color: '#546e7a', fontSize: '1.1rem' }}>Загрузка заказов...</div>
+                </div>
+            ) : error ? (
+                <div style={{
+                    maxWidth: '800px',
+                    margin: '2rem auto',
+                    padding: '3rem',
+                    textAlign: 'center',
+                    background: 'white',
+                    borderRadius: '16px',
+                    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)'
+                }}>
+                    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>⚠️</div>
+                    <h2 style={{ color: '#1a237e', marginBottom: '1rem' }}>Ошибка загрузки</h2>
+                    <p style={{ color: '#546e7a', marginBottom: '1rem' }}>{error}</p>
+
+                    <div style={{
+                        background: '#fff3e0',
+                        padding: '1rem',
+                        borderRadius: '8px',
+                        marginBottom: '1rem',
+                        textAlign: 'left'
+                    }}>
+                        <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold' }}>Детали:</p>
+                        <p style={{ margin: '0 0 0.5rem 0' }}>URL запроса: https://api.mos-hack.ru/api/orders?page=1&pageSize=10</p>
+                        <p style={{ margin: 0 }}>Проверьте консоль браузера для получения дополнительной информации</p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                        <button onClick={handleRetry} style={{
+                            padding: '12px 24px',
+                            background: 'linear-gradient(135deg, #2196F3, #1976D2)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease'
+                        }}>
+                            Попробовать снова
+                        </button>
+                        <Link to="/" style={{
+                            padding: '12px 24px',
+                            background: 'transparent',
+                            border: '1px solid #e0e0e0',
+                            color: '#666',
+                            textDecoration: 'none',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            transition: 'all 0.3s ease'
+                        }}>
+                            На главную
+                        </Link>
+                    </div>
+                </div>
+            ) : orders.length === 0 ? (
                 <div style={{
                     background: 'white',
                     borderRadius: '16px',
@@ -182,296 +338,558 @@ export default function UserOrders({ token }) {
                     textAlign: 'center',
                     boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)'
                 }}>
-                    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>📋</div>
+                    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>📦</div>
                     <h2 style={{ color: '#1a237e', marginBottom: '1rem' }}>Заказов пока нет</h2>
-                    <p style={{ color: '#546e7a', marginBottom: '2rem' }}>
-                        У вас еще нет оформленных заказов. Посмотрите каталог проектов и выберите подходящий!
+                    <p style={{ color: '#546e7a', marginBottom: '2rem', maxWidth: '600px', margin: '0 auto' }}>
+                        У вас еще нет оформленных заказов. После принятия вашей заявки менеджером, здесь появятся детали вашего заказа с информацией о прогрессе строительства.
                     </p>
-                    <Link to="/" className="btn btn-primary">
-                        Перейти в каталог
-                    </Link>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                        <button
+                            onClick={() => handleTabChange('applications')}
+                            style={{
+                                padding: '12px 24px',
+                                background: 'linear-gradient(135deg, #2196F3, #1976D2)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease'
+                            }}
+                        >
+                            Посмотреть заявки
+                        </button>
+                        <Link to="/" style={{
+                            padding: '12px 24px',
+                            background: 'transparent',
+                            border: '1px solid #e0e0e0',
+                            color: '#666',
+                            textDecoration: 'none',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            transition: 'all 0.3s ease'
+                        }}>
+                            К проектам
+                        </Link>
+                    </div>
                 </div>
             ) : (
-                <div style={{
-                    background: 'white',
-                    borderRadius: '16px',
-                    padding: '2rem',
-                    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)'
-                }}>
-                    <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '1.5rem',
-                        paddingBottom: '1rem',
-                        borderBottom: '2px solid #f0f0f0'
+                <>
+                    <div style={{
+                        background: 'white',
+                        borderRadius: '16px',
+                        padding: '2rem',
+                        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
+                        marginBottom: '1.5rem'
                     }}>
-                        <h2 style={{ color: '#1a237e', margin: 0 }}>Мои заказы ({orders.length})</h2>
-                        <button 
-                            onClick={fetchOrders}
-                            className="btn btn-outline"
-                            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                        >
-                            <span>🔄</span> Обновить
-                        </button>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        {orders.map(order => (
-                            <div key={order.id} style={{
-                                border: '1px solid #e0e0e0',
-                                borderRadius: '12px',
-                                overflow: 'hidden',
-                                transition: 'all 0.3s ease'
-                            }}>
-                                {/* Заголовок заказа */}
-                                <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    padding: '1.5rem',
-                                    background: '#f8f9fa',
-                                    borderBottom: '1px solid #e0e0e0'
-                                }}>
-                                    <div>
-                                        <h3 style={{ 
-                                            color: '#1a237e', 
-                                            margin: '0 0 0.5rem 0',
-                                            fontSize: '1.3rem'
-                                        }}>
-                                            Заказ #{order.id} • {order.projectInfo.title}
-                                        </h3>
-                                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: '#666' }}>
-                                            <span>📅 Создан: {new Date(order.createdAt).toLocaleDateString('ru-RU')}</span>
-                                            <span>💰 Стоимость: {order.projectInfo.basePrice} ₽</span>
-                                            <span>📏 Площадь: {order.projectInfo.totalArea} м²</span>
-                                        </div>
-                                    </div>
-                                    <div style={{
-                                        padding: '8px 16px',
-                                        borderRadius: '20px',
-                                        background: getStatusColor(order.currentStatus.statusType),
-                                        color: 'white',
-                                        fontWeight: 600,
-                                        fontSize: '0.9rem'
-                                    }}>
-                                        {getStatusText(order.currentStatus.statusType)}
-                                    </div>
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '1.5rem',
+                            paddingBottom: '1rem',
+                            borderBottom: '2px solid #f0f0f0'
+                        }}>
+                            <div>
+                                <h2 style={{ color: '#1a237e', margin: 0 }}>Мои заказы</h2>
+                                <p style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                                    Всего заказов: {totalElements}
+                                </p>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span style={{ color: '#666', fontSize: '0.9rem' }}>На странице:</span>
+                                    <select
+                                        value={pageSize}
+                                        onChange={handlePageSizeChange}
+                                        disabled={loading}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '6px',
+                                            border: '1px solid #e0e0e0',
+                                            background: 'white',
+                                            color: '#333',
+                                            fontSize: '0.9rem',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <option value="5">5</option>
+                                        <option value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                    </select>
                                 </div>
+                                <button
+                                    onClick={() => fetchOrders(page, pageSize)}
+                                    disabled={loading}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '10px 16px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #e0e0e0',
+                                        background: 'transparent',
+                                        color: loading ? '#999' : '#2196F3',
+                                        cursor: loading ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onMouseOver={(e) => !loading && (e.target.style.background = '#e3f2fd')}
+                                    onMouseOut={(e) => !loading && (e.target.style.background = 'transparent')}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <span style={{
+                                                width: '16px',
+                                                height: '16px',
+                                                border: '2px solid #e3f2fd',
+                                                borderTopColor: '#2196F3',
+                                                borderRadius: '50%',
+                                                animation: 'spin 1s linear infinite'
+                                            }}></span>
+                                            Загрузка...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>🔄</span> Обновить
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
 
-                                {/* Детали заказа */}
-                                <div style={{ padding: '1.5rem' }}>
-                                    <div style={{ 
-                                        display: 'grid', 
-                                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                                        gap: '1.5rem',
-                                        marginBottom: '1.5rem'
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {orders.map(order => {
+                                const progress = calculateProgress(order.currentStage);
+
+                                return (
+                                    <div key={order.id} style={{
+                                        border: '1px solid #e0e0e0',
+                                        borderRadius: '12px',
+                                        overflow: 'hidden',
+                                        transition: 'all 0.3s ease'
                                     }}>
-                                        {/* Адрес */}
-                                        <div>
-                                            <h4 style={{ 
-                                                color: '#37474f', 
-                                                margin: '0 0 0.5rem 0',
-                                                fontSize: '1rem',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px'
-                                            }}>
-                                                <span>📍</span> Адрес строительства
-                                            </h4>
-                                            <p style={{ color: '#546e7a', margin: 0 }}>{order.address}</p>
-                                        </div>
-
-                                        {/* Текущий статус */}
-                                        <div>
-                                            <h4 style={{ 
-                                                color: '#37474f', 
-                                                margin: '0 0 0.5rem 0',
-                                                fontSize: '1rem',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px'
-                                            }}>
-                                                <span>📊</span> Текущий статус
-                                            </h4>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <div style={{
-                                                    width: '10px',
-                                                    height: '10px',
-                                                    borderRadius: '50%',
-                                                    background: getStatusColor(order.currentStatus.statusType)
-                                                }}></div>
-                                                <span style={{ color: '#546e7a' }}>
-                                                    {order.currentStatus.comment}
-                                                </span>
-                                            </div>
-                                            <p style={{ 
-                                                fontSize: '0.85rem', 
-                                                color: '#999',
-                                                margin: '0.5rem 0 0 0'
-                                            }}>
-                                                Обновлен: {new Date(order.currentStatus.createdAt).toLocaleDateString('ru-RU')}
-                                            </p>
-                                        </div>
-
-                                        {/* Клиент */}
-                                        <div>
-                                            <h4 style={{ 
-                                                color: '#37474f', 
-                                                margin: '0 0 0.5rem 0',
-                                                fontSize: '1rem',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px'
-                                            }}>
-                                                <span>👤</span> Клиент
-                                            </h4>
-                                            <p style={{ color: '#546e7a', margin: 0 }}>
-                                                {order.clientInfo.fullName}
-                                            </p>
-                                            <p style={{ 
-                                                fontSize: '0.9rem', 
-                                                color: '#666',
-                                                margin: '0.25rem 0 0 0'
-                                            }}>
-                                                {order.clientInfo.email}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Текущий этап */}
-                                    {order.currentStage && (
+                                        {/* Заголовок заказа */}
                                         <div style={{
-                                            background: '#f5f5f5',
-                                            borderRadius: '8px',
-                                            padding: '1rem',
-                                            marginTop: '1rem'
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '1.5rem',
+                                            background: '#f8f9fa',
+                                            borderBottom: '1px solid #e0e0e0'
                                         }}>
-                                            <div style={{ 
-                                                display: 'flex', 
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                marginBottom: '1rem'
-                                            }}>
-                                                <h4 style={{ 
-                                                    color: '#37474f', 
-                                                    margin: 0,
-                                                    fontSize: '1rem',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '8px'
+                                            <div>
+                                                <h3 style={{
+                                                    color: '#1a237e',
+                                                    margin: '0 0 0.5rem 0',
+                                                    fontSize: '1.3rem'
                                                 }}>
-                                                    <span>🏗️</span> Текущий этап: {order.currentStage.stageName}
-                                                </h4>
-                                                <span style={{
-                                                    padding: '4px 12px',
-                                                    borderRadius: '12px',
-                                                    background: '#e3f2fd',
-                                                    color: '#1976D2',
-                                                    fontSize: '0.85rem',
-                                                    fontWeight: 600
-                                                }}>
-                                                    {getStageStatusText(order.currentStage.status)}
-                                                </span>
+                                                    Заказ #{order.id} - {order.projectInfo?.title || 'Проект дома'}
+                                                </h3>
+                                                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: '#666' }}>
+                                                    <span>📅 Создан: {formatDate(order.createdAt)}</span>
+                                                    <span>📍 Адрес: {order.address || 'Не указан'}</span>
+                                                </div>
                                             </div>
-                                            
-                                            <p style={{ color: '#546e7a', margin: '0 0 0.5rem 0' }}>
-                                                {order.currentStage.description}
-                                            </p>
-                                            
-                                            <div style={{ display: 'flex', gap: '2rem', fontSize: '0.9rem', color: '#666' }}>
-                                                <span>📅 Начало: {new Date(order.currentStage.startDate).toLocaleDateString('ru-RU')}</span>
-                                                <span>📅 План: {new Date(order.currentStage.plannedEndDate).toLocaleDateString('ru-RU')}</span>
-                                                {order.currentStage.actualEndDate && (
-                                                    <span>✅ Факт: {new Date(order.currentStage.actualEndDate).toLocaleDateString('ru-RU')}</span>
+                                            <div style={{
+                                                padding: '8px 16px',
+                                                borderRadius: '20px',
+                                                background: getStatusColor(order.currentStatus?.statusType),
+                                                color: 'white',
+                                                fontWeight: 600,
+                                                fontSize: '0.9rem'
+                                            }}>
+                                                {getStatusText(order.currentStatus?.statusType)}
+                                            </div>
+                                        </div>
+
+                                        {/* Детали заказа */}
+                                        <div style={{ padding: '1.5rem' }}>
+                                            {/* Общая информация о заказе */}
+                                            <div style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                                                gap: '1.5rem',
+                                                marginBottom: '1.5rem'
+                                            }}>
+                                                {/* Информация о проекте */}
+                                                <div>
+                                                    <h4 style={{
+                                                        color: '#37474f',
+                                                        margin: '0 0 0.5rem 0',
+                                                        fontSize: '1rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px'
+                                                    }}>
+                                                        <span>🏠</span> Проект
+                                                    </h4>
+                                                    <p style={{
+                                                        color: '#546e7a',
+                                                        margin: '0 0 0.25rem 0',
+                                                        fontSize: '1.1rem',
+                                                        fontWeight: 500
+                                                    }}>
+                                                        {order.projectInfo?.title || 'Не указан'}
+                                                    </p>
+                                                    <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: '#666' }}>
+                                                        <span>Площадь: {order.projectInfo?.totalArea || '—'} м²</span>
+                                                        <span>Цена: {formatPrice(order.projectInfo?.basePrice)}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Статус заказа */}
+                                                <div>
+                                                    <h4 style={{
+                                                        color: '#37474f',
+                                                        margin: '0 0 0.5rem 0',
+                                                        fontSize: '1rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px'
+                                                    }}>
+                                                        <span>📊</span> Статус заказа
+                                                    </h4>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <div style={{
+                                                            width: '10px',
+                                                            height: '10px',
+                                                            borderRadius: '50%',
+                                                            background: getStatusColor(order.currentStatus?.statusType)
+                                                        }}></div>
+                                                        <span style={{
+                                                            color: '#546e7a',
+                                                            fontSize: '1rem'
+                                                        }}>
+                                                            {getStatusText(order.currentStatus?.statusType)}
+                                                        </span>
+                                                    </div>
+                                                    {order.currentStatus?.comment && (
+                                                        <p style={{
+                                                            fontSize: '0.9rem',
+                                                            color: '#666',
+                                                            margin: '0.5rem 0 0 0',
+                                                            fontStyle: 'italic'
+                                                        }}>
+                                                            Комментарий: {order.currentStatus.comment}
+                                                        </p>
+                                                    )}
+                                                    {order.currentStatus?.changedBy && (
+                                                        <p style={{
+                                                            fontSize: '0.85rem',
+                                                            color: '#999',
+                                                            margin: '0.25rem 0 0 0'
+                                                        }}>
+                                                            Изменен: {order.currentStatus.changedBy.fullName} ({order.currentStatus.changedBy.role})
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {/* Информация о клиенте */}
+                                                {order.clientInfo && (
+                                                    <div>
+                                                        <h4 style={{
+                                                            color: '#37474f',
+                                                            margin: '0 0 0.5rem 0',
+                                                            fontSize: '1rem',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '8px'
+                                                        }}>
+                                                            <span>👤</span> Клиент
+                                                        </h4>
+                                                        <p style={{ color: '#546e7a', margin: 0 }}>
+                                                            {order.clientInfo.fullName || 'Не указано'}
+                                                        </p>
+                                                        {order.clientInfo.email && (
+                                                            <p style={{
+                                                                fontSize: '0.9rem',
+                                                                color: '#666',
+                                                                margin: '0.25rem 0 0 0'
+                                                            }}>
+                                                                {order.clientInfo.email}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
 
-                                            {/* Прогресс-бар */}
-                                            {order.currentStage.progress !== undefined && (
-                                                <div style={{ marginTop: '1rem' }}>
-                                                    <div style={{ 
-                                                        display: 'flex', 
-                                                        justifyContent: 'space-between',
-                                                        marginBottom: '0.5rem'
-                                                    }}>
-                                                        <span style={{ fontSize: '0.9rem', color: '#666' }}>Прогресс выполнения</span>
-                                                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#1976D2' }}>
-                                                            {order.currentStage.progress}%
-                                                        </span>
-                                                    </div>
+                                            {/* Текущий этап строительства */}
+                                            {order.currentStage && (
+                                                <div style={{
+                                                    border: '1px solid #e0e0e0',
+                                                    borderRadius: '8px',
+                                                    padding: '1.5rem',
+                                                    marginBottom: '1.5rem',
+                                                    background: '#fafafa'
+                                                }}>
                                                     <div style={{
-                                                        width: '100%',
-                                                        height: '8px',
-                                                        background: '#e0e0e0',
-                                                        borderRadius: '4px',
-                                                        overflow: 'hidden'
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        alignItems: 'center',
+                                                        marginBottom: '1rem'
                                                     }}>
+                                                        <h4 style={{
+                                                            color: '#37474f',
+                                                            margin: 0,
+                                                            fontSize: '1.1rem',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '8px'
+                                                        }}>
+                                                            <span>🏗️</span> Текущий этап: {order.currentStage.stageName}
+                                                        </h4>
                                                         <div style={{
-                                                            width: `${order.currentStage.progress}%`,
-                                                            height: '100%',
-                                                            background: 'linear-gradient(90deg, #2196F3, #21CBF3)',
+                                                            padding: '6px 12px',
+                                                            borderRadius: '20px',
+                                                            background: getStageColor(order.currentStage.status),
+                                                            color: 'white',
+                                                            fontWeight: 600,
+                                                            fontSize: '0.8rem'
+                                                        }}>
+                                                            {getStageStatusText(order.currentStage.status)}
+                                                        </div>
+                                                    </div>
+
+                                                    <p style={{
+                                                        color: '#666',
+                                                        margin: '0 0 1rem 0',
+                                                        fontSize: '0.9rem'
+                                                    }}>
+                                                        {order.currentStage.description || 'Описание этапа отсутствует'}
+                                                    </p>
+
+                                                    {/* Прогресс этапа */}
+                                                    <div style={{ marginBottom: '1rem' }}>
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            marginBottom: '0.5rem',
+                                                            fontSize: '0.9rem',
+                                                            color: '#666'
+                                                        }}>
+                                                            <span>Прогресс выполнения:</span>
+                                                            <span>{progress}%</span>
+                                                        </div>
+                                                        <div style={{
+                                                            width: '100%',
+                                                            height: '8px',
+                                                            background: '#e0e0e0',
                                                             borderRadius: '4px',
-                                                            transition: 'width 0.3s ease'
-                                                        }}></div>
+                                                            overflow: 'hidden'
+                                                        }}>
+                                                            <div style={{
+                                                                width: `${progress}%`,
+                                                                height: '100%',
+                                                                background: order.currentStage.status === 'completed' ? '#4CAF50' :
+                                                                    order.currentStage.status === 'delayed' ? '#F44336' : '#2196F3',
+                                                                borderRadius: '4px',
+                                                                transition: 'width 0.5s ease'
+                                                            }}></div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Даты этапа */}
+                                                    <div style={{
+                                                        display: 'grid',
+                                                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                                                        gap: '1rem',
+                                                        fontSize: '0.85rem',
+                                                        color: '#666'
+                                                    }}>
+                                                        <div>
+                                                            <span style={{ fontWeight: 600 }}>Начало:</span> {formatDate(order.currentStage.startDate) || 'Не указано'}
+                                                        </div>
+                                                        <div>
+                                                            <span style={{ fontWeight: 600 }}>Планируемое окончание:</span> {formatDate(order.currentStage.plannedEndDate) || 'Не указано'}
+                                                        </div>
+                                                        {order.currentStage.actualEndDate && (
+                                                            <div>
+                                                                <span style={{ fontWeight: 600 }}>Фактическое окончание:</span> {formatDate(order.currentStage.actualEndDate)}
+                                                            </div>
+                                                        )}
+                                                        {order.currentStage.createdBy && (
+                                                            <div>
+                                                                <span style={{ fontWeight: 600 }}>Ответственный:</span> {order.currentStage.createdBy.fullName} ({order.currentStage.createdBy.role})
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}
-                                        </div>
-                                    )}
 
-                                    {/* Комментарии */}
-                                    <div style={{ marginTop: '1.5rem' }}>
-                                        {order.currentStatus.comment && (
+                                            {/* Кнопки действий */}
                                             <div style={{
-                                                padding: '1rem',
-                                                background: '#fff8e1',
-                                                borderRadius: '8px',
-                                                borderLeft: '4px solid #ffb300'
+                                                display: 'flex',
+                                                gap: '1rem',
+                                                paddingTop: '1.5rem',
+                                                borderTop: '1px solid #f0f0f0'
                                             }}>
-                                                <p style={{ 
-                                                    margin: 0, 
-                                                    color: '#5d4037',
-                                                    fontSize: '0.9rem',
-                                                    display: 'flex',
-                                                    alignItems: 'flex-start',
-                                                    gap: '8px'
-                                                }}>
-                                                    <span>💬</span> {order.currentStatus.comment}
-                                                </p>
+                                                <Link
+                                                    to={`/template/${order.projectInfo?.id}`}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px',
+                                                        padding: '10px 16px',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid #e0e0e0',
+                                                        background: 'transparent',
+                                                        color: '#2196F3',
+                                                        textDecoration: 'none',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.3s ease'
+                                                    }}
+                                                    onMouseOver={(e) => {
+                                                        e.target.style.background = '#e3f2fd';
+                                                        e.target.style.borderColor = '#2196F3';
+                                                    }}
+                                                    onMouseOut={(e) => {
+                                                        e.target.style.background = 'transparent';
+                                                        e.target.style.borderColor = '#e0e0e0';
+                                                    }}
+                                                >
+                                                    <span>👁️</span> Посмотреть проект
+                                                </Link>
+                                                <button
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px',
+                                                        padding: '10px 16px',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid #4CAF50',
+                                                        background: 'transparent',
+                                                        color: '#4CAF50',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.3s ease'
+                                                    }}
+                                                    onMouseOver={(e) => {
+                                                        e.target.style.background = '#E8F5E9';
+                                                    }}
+                                                    onMouseOut={(e) => {
+                                                        e.target.style.background = 'transparent';
+                                                    }}
+                                                >
+                                                    <span>💬</span> Связаться с менеджером
+                                                </button>
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
-
-                                    {/* Кнопки действий */}
-                                    <div style={{ 
-                                        display: 'flex', 
-                                        gap: '1rem',
-                                        marginTop: '1.5rem',
-                                        paddingTop: '1rem',
-                                        borderTop: '1px solid #f0f0f0'
-                                    }}>
-                                        <Link 
-                                            to={`/template/${order.projectInfo.id}`}
-                                            className="btn btn-outline"
-                                            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                                        >
-                                            <span>👁️</span> Посмотреть проект
-                                        </Link>
-                                        <button 
-                                            className="btn btn-outline"
-                                            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                                            onClick={() => alert('Функция связи с менеджером будет доступна в ближайшее время')}
-                                        >
-                                            <span>📞</span> Связаться с менеджером
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
+
+                    {/* Пагинация */}
+                    {totalPages > 1 && (
+                        <div style={{
+                            background: 'white',
+                            borderRadius: '16px',
+                            padding: '1.5rem',
+                            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: '1rem'
+                        }}>
+                            <button
+                                onClick={() => handlePageChange(1)}
+                                disabled={page === 1 || loading}
+                                style={{
+                                    padding: '8px 16px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #e0e0e0',
+                                    background: page === 1 ? '#f5f5f5' : 'white',
+                                    color: page === 1 ? '#999' : '#333',
+                                    cursor: page === 1 || loading ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.3s ease',
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                ⏮️ Первая
+                            </button>
+
+                            <button
+                                onClick={() => handlePageChange(page - 1)}
+                                disabled={page === 1 || loading}
+                                style={{
+                                    padding: '8px 16px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #e0e0e0',
+                                    background: page === 1 ? '#f5f5f5' : 'white',
+                                    color: page === 1 ? '#999' : '#333',
+                                    cursor: page === 1 || loading ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.3s ease',
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                ◀️ Назад
+                            </button>
+
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                fontSize: '0.9rem',
+                                color: '#666'
+                            }}>
+                                <span>Страница</span>
+                                <span style={{
+                                    padding: '4px 12px',
+                                    background: '#e3f2fd',
+                                    borderRadius: '4px',
+                                    fontWeight: 600,
+                                    color: '#2196F3'
+                                }}>
+                                    {page}
+                                </span>
+                                <span>из</span>
+                                <span style={{ fontWeight: 600 }}>{totalPages}</span>
+                            </div>
+
+                            <button
+                                onClick={() => handlePageChange(page + 1)}
+                                disabled={page >= totalPages || loading}
+                                style={{
+                                    padding: '8px 16px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #e0e0e0',
+                                    background: page >= totalPages ? '#f5f5f5' : 'white',
+                                    color: page >= totalPages ? '#999' : '#333',
+                                    cursor: page >= totalPages || loading ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.3s ease',
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                Вперед ▶️
+                            </button>
+
+                            <button
+                                onClick={() => handlePageChange(totalPages)}
+                                disabled={page >= totalPages || loading}
+                                style={{
+                                    padding: '8px 16px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #e0e0e0',
+                                    background: page >= totalPages ? '#f5f5f5' : 'white',
+                                    color: page >= totalPages ? '#999' : '#333',
+                                    cursor: page >= totalPages || loading ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.3s ease',
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                Последняя ⏭️
+                            </button>
+                        </div>
+                    )}
+                </>
             )}
+
+            <style jsx="true">{`
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+            `}</style>
         </div>
     );
 }

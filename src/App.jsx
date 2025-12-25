@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import PublicContent from './components/PublicContent';
 import TemplateDetail from './components/TemplateDetail';
-import UserOrders from './components/UserOrders'; // Новый компонент
+import UserApplications from './components/UserApplications'; // Новый компонент
+import UserOrders from './components/UserOrders';
 import Footer from './components/Footer';
 import { getAuthConfig } from './auth-config';
 import AdminDashboard from './components/AdminDashboard';
@@ -21,7 +22,7 @@ export default function App() {
 
             const { KEYCLOAK_URL, REALM, CLIENT_ID } = getAuthConfig();
             const expiresAt = localStorage.getItem('token_expires_at');
-            
+
             if (expiresAt && Date.now() > parseInt(expiresAt) - 60000) {
                 const body = new URLSearchParams({
                     grant_type: 'refresh_token',
@@ -72,35 +73,39 @@ export default function App() {
                 }}>
                     <Routes>
                         <Route path="/" element={<PublicContent token={token} />} />
-                        <Route 
-                            path="/template/:id" 
+                        <Route
+                            path="/template/:id"
                             element={
-                                <TemplateDetail 
-                                    token={token} 
-                                    setToken={setToken} 
+                                <TemplateDetail
+                                    token={token}
+                                    setToken={setToken}
                                 />
-                            } 
+                            }
                         />
-                        <Route 
-                            path="/profile/orders" 
-                            element={<UserOrders token={token} />} 
+                        <Route
+                            path="/profile/applications"
+                            element={<UserApplications token={token} />}
+                        />
+                        <Route
+                            path="/profile/orders"
+                            element={<UserApplications token={token} />}
                         />
                         {/* Новые маршруты для администратора */}
-                        <Route 
-                            path="/admin" 
-                            element={<AdminDashboard token={token} />} 
+                        <Route
+                            path="/admin"
+                            element={<AdminDashboard token={token} />}
                         />
-                        <Route 
-                            path="/admin/orders/:userId" 
-                            element={<UserOrdersAdmin token={token} />} 
+                        <Route
+                            path="/admin/orders/:userId"
+                            element={<UserOrdersAdmin token={token} />}
                         />
-                        <Route 
-                            path="/admin/user/:userId/create-application" 
-                            element={<CreateApplication token={token} />} 
+                        <Route
+                            path="/admin/user/:userId/create-application"
+                            element={<CreateApplication token={token} />}
                         />
-                        <Route 
-                            path="/admin/order/:orderId" 
-                            element={<OrderDetailAdmin token={token} />} 
+                        <Route
+                            path="/admin/order/:orderId"
+                            element={<OrderDetailAdmin token={token} />}
                         />
                     </Routes>
                 </main>

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { getAuthConfig } from '../auth-config';
+import { getAuthConfig, getConfig } from '../auth-config';
 
 export default function LoginModal({ onClose, onSuccess }) {
     const [isLogin, setIsLogin] = useState(true);
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -19,8 +21,9 @@ export default function LoginModal({ onClose, onSuccess }) {
         e.preventDefault();
         setError('');
         setSuccessMessage('');
-        
+
         if (!isLogin) {
+            // Валидация для регистрации
             if (password !== confirmPassword) {
                 setError('Пароли не совпадают');
                 return;
@@ -33,12 +36,16 @@ export default function LoginModal({ onClose, onSuccess }) {
                 setError('Введите корректный email');
                 return;
             }
+            if (!username.trim()) {
+                setError('Введите логин');
+                return;
+            }
         }
 
         setLoading(true);
 
         if (isLogin) {
-            // Логин
+            // Логин (остается прежним)
             const body = new URLSearchParams({
                 grant_type: 'password',
                 client_id: CLIENT_ID,
@@ -70,20 +77,86 @@ export default function LoginModal({ onClose, onSuccess }) {
                 setLoading(false);
             }
         } else {
-            // Регистрация через Keycloak Registration Flow
+            // Регистрация через /api/auth/register
             try {
-                // Перенаправляем на страницу регистрации Keycloak
-                const redirectUri = `${window.location.origin}/`;
-                const registerUrl = `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/registrations?client_id=${CLIENT_ID}&response_type=code&scope=openid&redirect_uri=${encodeURIComponent(redirectUri)}`;
-                
-                setSuccessMessage('Перенаправляем на страницу регистрации...');
-                setTimeout(() => {
-                    window.open(registerUrl, '_blank');
-                    setIsLogin(true); // Возвращаем к форме входа
-                }, 1000);
-                
+                const { API_BASE_URL } = getConfig();
+                const registerData = {
+                    username: username.trim(),
+                    email: email.trim(),
+                    password: password,
+                    firstName: firstName.trim() || username.trim(),
+                    lastName: lastName.trim() || username.trim()
+                };
+
+                const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(registerData),
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    let errorMessage = 'Ошибка регистрации';
+
+                    try {
+                        const errorData = JSON.parse(text);
+                        errorMessage = errorData.message || errorData.error || errorMessage;
+                    } catch {
+                        if (text.includes('already exists') || text.includes('уже существует')) {
+                            errorMessage = 'Пользователь с таким логином или email уже существует';
+                        } else if (text.includes('Invalid email')) {
+                            errorMessage = 'Некорректный email адрес';
+                        } else if (text.includes('weak password')) {
+                            errorMessage = 'Пароль слишком слабый';
+                        } else if (text) {
+                            errorMessage = text;
+                        }
+                    }
+
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+
+                // После успешной регистрации автоматически входим
+                setSuccessMessage('Регистрация успешна! Выполняется вход...');
+
+                // Автоматический вход после регистрации
+                setTimeout(async () => {
+                    try {
+                        const loginBody = new URLSearchParams({
+                            grant_type: 'password',
+                            client_id: CLIENT_ID,
+                            username: registerData.username,
+                            password: registerData.password,
+                        });
+
+                        const loginRes = await fetch(`${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: loginBody,
+                        });
+
+                        if (loginRes.ok) {
+                            const loginData = await loginRes.json();
+                            localStorage.setItem('access_token', loginData.access_token);
+                            localStorage.setItem('refresh_token', loginData.refresh_token);
+                            localStorage.setItem('token_expires_at', Date.now() + loginData.expires_in * 1000);
+                            onSuccess();
+                        } else {
+                            setError('Регистрация прошла успешно, но не удалось выполнить автоматический вход. Войдите вручную.');
+                            setIsLogin(true);
+                        }
+                    } catch (loginErr) {
+                        setError('Регистрация прошла успешно, но не удалось выполнить автоматический вход. Войдите вручную.');
+                        setIsLogin(true);
+                    }
+                }, 1500);
+
             } catch (err) {
-                setError('Ошибка регистрации: ' + err.message);
+                setError(err.message);
             } finally {
                 setLoading(false);
             }
@@ -96,6 +169,8 @@ export default function LoginModal({ onClose, onSuccess }) {
         setSuccessMessage('');
         setPassword('');
         setConfirmPassword('');
+        setFirstName('');
+        setLastName('');
     };
 
     return (
@@ -114,14 +189,14 @@ export default function LoginModal({ onClose, onSuccess }) {
                 borderRadius: '24px',
                 padding: '2.5rem',
                 width: '90%',
-                maxWidth: '450px',
+                maxWidth: isLogin ? '450px' : '500px',
                 boxShadow: '0 25px 70px rgba(0, 0, 0, 0.35)',
                 position: 'relative',
-                borderTop: '6px solid #2196F3',
+                borderTop: `6px solid ${isLogin ? '#2196F3' : '#4CAF50'}`,
                 animation: 'modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
             }} onClick={e => e.stopPropagation()}>
-                
-                <button 
+
+                <button
                     onClick={onClose}
                     style={{
                         position: 'absolute',
@@ -159,7 +234,7 @@ export default function LoginModal({ onClose, onSuccess }) {
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                     <h2 style={{
                         margin: '0 0 0.5rem',
-                        color: '#2196F3',
+                        color: isLogin ? '#2196F3' : '#4CAF50',
                         fontSize: '2rem',
                         fontWeight: 700
                     }}>
@@ -171,7 +246,7 @@ export default function LoginModal({ onClose, onSuccess }) {
                         fontSize: '0.95rem',
                         opacity: 0.9
                     }}>
-                        {isLogin ? 'Введите ваши данные для входа' : 'Создайте новую учетную запись'}
+                        {isLogin ? 'Введите ваши данные для входа' : 'Заполните форму для создания аккаунта'}
                     </p>
                 </div>
 
@@ -180,20 +255,23 @@ export default function LoginModal({ onClose, onSuccess }) {
                     flexDirection: 'column',
                     gap: '1.2rem'
                 }}>
+                    {/* Общие поля для входа и регистрации */}
                     <div>
                         <label style={{
                             display: 'block',
                             marginBottom: '0.5rem',
                             fontWeight: 600,
                             color: '#333'
-                        }}>Логин *</label>
+                        }}>
+                            {isLogin ? 'Логин или Email *' : 'Логин *'}
+                        </label>
                         <div style={{ position: 'relative' }}>
                             <span style={{
                                 position: 'absolute',
                                 left: '16px',
                                 top: '50%',
                                 transform: 'translateY(-50%)',
-                                color: '#2196F3',
+                                color: isLogin ? '#2196F3' : '#4CAF50',
                                 fontSize: '1.2rem'
                             }}>👤</span>
                             <input
@@ -210,48 +288,125 @@ export default function LoginModal({ onClose, onSuccess }) {
                                 }}
                                 value={username}
                                 onChange={e => setUsername(e.target.value)}
-                                placeholder="Введите логин"
+                                placeholder={isLogin ? "Введите логин или email" : "Придумайте логин"}
                                 autoFocus
                             />
                         </div>
                     </div>
 
+                    {/* Поля только для регистрации */}
                     {!isLogin && (
-                        <div>
-                            <label style={{
-                                display: 'block',
-                                marginBottom: '0.5rem',
-                                fontWeight: 600,
-                                color: '#333'
-                            }}>Email *</label>
-                            <div style={{ position: 'relative' }}>
-                                <span style={{
-                                    position: 'absolute',
-                                    left: '16px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    color: '#2196F3',
-                                    fontSize: '1.2rem'
-                                }}>✉️</span>
-                                <input
-                                    required
-                                    type="email"
-                                    style={{
-                                        width: '100%',
-                                        padding: '14px 16px 14px 50px',
-                                        border: '2px solid #e3f2fd',
-                                        borderRadius: '12px',
-                                        fontSize: '1rem',
-                                        background: '#fafcff',
-                                        transition: 'all 0.3s ease',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    placeholder="example@mail.ru"
-                                />
+                        <>
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gap: '1rem'
+                            }}>
+                                <div>
+                                    <label style={{
+                                        display: 'block',
+                                        marginBottom: '0.5rem',
+                                        fontWeight: 600,
+                                        color: '#333'
+                                    }}>Имя</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <span style={{
+                                            position: 'absolute',
+                                            left: '16px',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            color: '#4CAF50',
+                                            fontSize: '1.2rem'
+                                        }}>👨</span>
+                                        <input
+                                            style={{
+                                                width: '100%',
+                                                padding: '14px 16px 14px 50px',
+                                                border: '2px solid #e3f2fd',
+                                                borderRadius: '12px',
+                                                fontSize: '1rem',
+                                                background: '#fafcff',
+                                                transition: 'all 0.3s ease',
+                                                boxSizing: 'border-box'
+                                            }}
+                                            value={firstName}
+                                            onChange={e => setFirstName(e.target.value)}
+                                            placeholder="Иван"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label style={{
+                                        display: 'block',
+                                        marginBottom: '0.5rem',
+                                        fontWeight: 600,
+                                        color: '#333'
+                                    }}>Фамилия</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <span style={{
+                                            position: 'absolute',
+                                            left: '16px',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            color: '#4CAF50',
+                                            fontSize: '1.2rem'
+                                        }}>👨</span>
+                                        <input
+                                            style={{
+                                                width: '100%',
+                                                padding: '14px 16px 14px 50px',
+                                                border: '2px solid #e3f2fd',
+                                                borderRadius: '12px',
+                                                fontSize: '1rem',
+                                                background: '#fafcff',
+                                                transition: 'all 0.3s ease',
+                                                boxSizing: 'border-box'
+                                            }}
+                                            value={lastName}
+                                            onChange={e => setLastName(e.target.value)}
+                                            placeholder="Иванов"
+                                        />
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '0.5rem',
+                                    fontWeight: 600,
+                                    color: '#333'
+                                }}>Email *</label>
+                                <div style={{ position: 'relative' }}>
+                                    <span style={{
+                                        position: 'absolute',
+                                        left: '16px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        color: '#4CAF50',
+                                        fontSize: '1.2rem'
+                                    }}>✉️</span>
+                                    <input
+                                        required
+                                        type="email"
+                                        style={{
+                                            width: '100%',
+                                            padding: '14px 16px 14px 50px',
+                                            border: '2px solid #e3f2fd',
+                                            borderRadius: '12px',
+                                            fontSize: '1rem',
+                                            background: '#fafcff',
+                                            transition: 'all 0.3s ease',
+                                            boxSizing: 'border-box'
+                                        }}
+                                        value={email}
+                                        onChange={e => setEmail(e.target.value)}
+                                        placeholder="ivan@example.com"
+                                    />
+                                </div>
+                            </div>
+                        </>
                     )}
 
                     <div>
@@ -267,7 +422,7 @@ export default function LoginModal({ onClose, onSuccess }) {
                                 left: '16px',
                                 top: '50%',
                                 transform: 'translateY(-50%)',
-                                color: '#2196F3',
+                                color: isLogin ? '#2196F3' : '#4CAF50',
                                 fontSize: '1.2rem'
                             }}>🔒</span>
                             <input
@@ -303,12 +458,22 @@ export default function LoginModal({ onClose, onSuccess }) {
                                     transition: 'color 0.2s'
                                 }}
                                 onClick={() => setShowPassword(!showPassword)}
-                                onMouseOver={(e) => e.target.style.color = '#2196F3'}
+                                onMouseOver={(e) => e.target.style.color = isLogin ? '#2196F3' : '#4CAF50'}
                                 onMouseOut={(e) => e.target.style.color = '#666'}
                             >
                                 {showPassword ? '🙈' : '👁️'}
                             </button>
                         </div>
+                        {!isLogin && (
+                            <p style={{
+                                fontSize: '0.85rem',
+                                color: '#666',
+                                marginTop: '0.5rem',
+                                paddingLeft: '10px'
+                            }}>
+                                💡 Пароль должен быть не менее 6 символов
+                            </p>
+                        )}
                     </div>
 
                     {!isLogin && (
@@ -325,7 +490,7 @@ export default function LoginModal({ onClose, onSuccess }) {
                                     left: '16px',
                                     top: '50%',
                                     transform: 'translateY(-50%)',
-                                    color: '#2196F3',
+                                    color: '#4CAF50',
                                     fontSize: '1.2rem'
                                 }}>🔒</span>
                                 <input
@@ -361,7 +526,7 @@ export default function LoginModal({ onClose, onSuccess }) {
                                         transition: 'color 0.2s'
                                     }}
                                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    onMouseOver={(e) => e.target.style.color = '#2196F3'}
+                                    onMouseOver={(e) => e.target.style.color = '#4CAF50'}
                                     onMouseOut={(e) => e.target.style.color = '#666'}
                                 >
                                     {showConfirmPassword ? '🙈' : '👁️'}
@@ -430,8 +595,8 @@ export default function LoginModal({ onClose, onSuccess }) {
                                 }} />
                                 <span>Запомнить меня</span>
                             </label>
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 style={{
                                     background: 'none',
                                     border: 'none',
@@ -452,8 +617,8 @@ export default function LoginModal({ onClose, onSuccess }) {
                     )}
 
                     <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             disabled={loading}
                             style={{
                                 width: '100%',
@@ -461,13 +626,14 @@ export default function LoginModal({ onClose, onSuccess }) {
                                 borderRadius: '12px',
                                 fontSize: '1rem',
                                 fontWeight: 600,
-                                background: 'linear-gradient(135deg, #2196F3, #21CBF3)',
+                                background: `linear-gradient(135deg, ${isLogin ? '#2196F3' : '#4CAF50'}, ${isLogin ? '#21CBF3' : '#2E7D32'})`,
                                 border: 'none',
                                 color: 'white',
-                                cursor: 'pointer',
+                                cursor: loading ? 'not-allowed' : 'pointer',
                                 transition: 'all 0.3s ease',
                                 position: 'relative',
-                                overflow: 'hidden'
+                                overflow: 'hidden',
+                                opacity: loading ? 0.7 : 1
                             }}
                             onMouseOver={(e) => !loading && (e.target.style.transform = 'translateY(-2px)')}
                             onMouseOut={(e) => !loading && (e.target.style.transform = 'translateY(0)')}
@@ -513,21 +679,21 @@ export default function LoginModal({ onClose, onSuccess }) {
                     <div style={{ textAlign: 'center', color: '#666', fontSize: '0.95rem' }}>
                         <p>
                             {isLogin ? 'Ещё нет аккаунта?' : 'Уже есть аккаунт?'}
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 onClick={toggleMode}
                                 style={{
                                     background: 'none',
                                     border: 'none',
-                                    color: '#2196F3',
+                                    color: isLogin ? '#2196F3' : '#4CAF50',
                                     fontWeight: 600,
                                     cursor: 'pointer',
                                     padding: '0 5px',
                                     textDecoration: 'underline',
                                     transition: 'color 0.2s'
                                 }}
-                                onMouseOver={(e) => e.target.style.color = '#0d47a1'}
-                                onMouseOut={(e) => e.target.style.color = '#2196F3'}
+                                onMouseOver={(e) => e.target.style.color = isLogin ? '#0d47a1' : '#2E7D32'}
+                                onMouseOut={(e) => e.target.style.color = isLogin ? '#2196F3' : '#4CAF50'}
                             >
                                 {isLogin ? ' Зарегистрироваться' : ' Войти'}
                             </button>
@@ -545,18 +711,30 @@ export default function LoginModal({ onClose, onSuccess }) {
                             textAlign: 'center',
                             lineHeight: 1.4
                         }}>
-                            Нажимая кнопку, вы соглашаетесь с 
+                            Нажимая кнопку, вы соглашаетесь с
                             <a href="#" onClick={(e) => { e.preventDefault(); alert('Политика конфиденциальности'); }}
-                               style={{ color: '#2196F3', textDecoration: 'none' }}
-                               onMouseOver={(e) => { e.target.style.color = '#0d47a1'; e.target.style.textDecoration = 'underline'; }}
-                               onMouseOut={(e) => { e.target.style.color = '#2196F3'; e.target.style.textDecoration = 'none'; }}>
+                                style={{ color: isLogin ? '#2196F3' : '#4CAF50', textDecoration: 'none' }}
+                                onMouseOver={(e) => {
+                                    e.target.style.color = isLogin ? '#0d47a1' : '#2E7D32';
+                                    e.target.style.textDecoration = 'underline';
+                                }}
+                                onMouseOut={(e) => {
+                                    e.target.style.color = isLogin ? '#2196F3' : '#4CAF50';
+                                    e.target.style.textDecoration = 'none';
+                                }}>
                                 {' политикой конфиденциальности '}
                             </a>
                             и
                             <a href="#" onClick={(e) => { e.preventDefault(); alert('Условия использования'); }}
-                               style={{ color: '#2196F3', textDecoration: 'none' }}
-                               onMouseOver={(e) => { e.target.style.color = '#0d47a1'; e.target.style.textDecoration = 'underline'; }}
-                               onMouseOut={(e) => { e.target.style.color = '#2196F3'; e.target.style.textDecoration = 'none'; }}>
+                                style={{ color: isLogin ? '#2196F3' : '#4CAF50', textDecoration: 'none' }}
+                                onMouseOver={(e) => {
+                                    e.target.style.color = isLogin ? '#0d47a1' : '#2E7D32';
+                                    e.target.style.textDecoration = 'underline';
+                                }}
+                                onMouseOut={(e) => {
+                                    e.target.style.color = isLogin ? '#2196F3' : '#4CAF50';
+                                    e.target.style.textDecoration = 'none';
+                                }}>
                                 {' условиями использования'}
                             </a>
                         </p>

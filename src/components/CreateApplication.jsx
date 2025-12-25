@@ -26,22 +26,22 @@ export default function CreateApplication({ token }) {
     const fetchUserAndTemplates = async () => {
         try {
             const { API_BASE_URL } = getConfig();
-            
+
             // Получаем пользователя
             const userRes = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
+
             if (!userRes.ok) throw new Error('Пользователь не найден');
             const userData = await userRes.json();
             setUser(userData);
-            setForm(prev => ({...prev, clientId: userId}));
+            setForm(prev => ({ ...prev, clientId: userId }));
 
             // Получаем шаблоны
             const templatesRes = await fetch(`${API_BASE_URL}/api/templates`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
+
             if (templatesRes.ok) {
                 const data = await templatesRes.json();
                 setTemplates(data.content || []);
@@ -56,7 +56,7 @@ export default function CreateApplication({ token }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!form.address.trim()) {
             alert('Укажите адрес строительства');
             return;
@@ -96,7 +96,7 @@ export default function CreateApplication({ token }) {
             const data = await response.json();
             alert('✅ Заявка успешно создана!');
             navigate(`/admin/user/${userId}/applications`);
-            
+
         } catch (err) {
             console.error('Ошибка создания заявки:', err);
             alert('Ошибка создания заявки: ' + err.message);
@@ -107,7 +107,7 @@ export default function CreateApplication({ token }) {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setForm(prev => ({...prev, [name]: value}));
+        setForm(prev => ({ ...prev, [name]: value }));
     };
 
     if (loading) return <div className="loading">Загрузка...</div>;
@@ -134,7 +134,7 @@ export default function CreateApplication({ token }) {
             <form onSubmit={handleSubmit} className="application-form">
                 <div className="form-section">
                     <h3>📋 Основная информация</h3>
-                    
+
                     <div className="form-group">
                         <label>📍 Адрес строительства *</label>
                         <input
@@ -186,7 +186,7 @@ export default function CreateApplication({ token }) {
 
                 <div className="form-section">
                     <h3>📝 Детали заявки</h3>
-                    
+
                     <div className="form-group">
                         <label>💬 Описание / особые пожелания</label>
                         <textarea
@@ -216,7 +216,7 @@ export default function CreateApplication({ token }) {
                             </>
                         ) : '✅ Создать заявку'}
                     </button>
-                    
+
                     <button
                         type="button"
                         onClick={() => navigate(-1)}
