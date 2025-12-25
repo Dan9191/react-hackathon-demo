@@ -113,74 +113,77 @@ export default function Header({ token, setToken }) {
                             </div>
                         </div>
 
-                        {/* Кнопка личного кабинета */}
-                        <Link 
-                            to="/profile/orders" 
-                            className="btn btn-outline"
-                            style={{
-                                padding: '10px 20px',
-                                borderRadius: '12px',
-                                fontWeight: 600,
-                                fontSize: '0.95rem',
-                                background: 'transparent',
-                                border: '2px solid rgba(255, 255, 255, 0.3)',
-                                color: 'white',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                textDecoration: 'none'
-                            }}
-                            onMouseOver={(e) => {
-                                e.target.style.background = 'rgba(255, 255, 255, 0.1)';
-                                e.target.style.borderColor = 'white';
-                                e.target.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseOut={(e) => {
-                                e.target.style.background = 'transparent';
-                                e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-                                e.target.style.transform = 'translateY(0)';
-                            }}
-                        >
-                            <span>👤</span> Мой кабинет
-                        </Link>
+                        {/* Кнопка личного кабинета - показываем только НЕ админам */}
+                        {!isAdmin && (
+                            <Link
+                                to="/profile/applications"
+                                className="btn btn-outline"
+                                style={{
+                                    padding: '10px 20px',
+                                    borderRadius: '12px',
+                                    fontWeight: 600,
+                                    fontSize: '0.95rem',
+                                    background: 'transparent',
+                                    border: '2px solid rgba(255, 255, 255, 0.3)',
+                                    color: 'white',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    textDecoration: 'none'
+                                }}
+                                onMouseOver={(e) => {
+                                    e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    e.target.style.borderColor = 'white';
+                                    e.target.style.transform = 'translateY(-2px)';
+                                }}
+                                onMouseOut={(e) => {
+                                    e.target.style.background = 'transparent';
+                                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                                    e.target.style.transform = 'translateY(0)';
+                                }}
+                            >
+                                <span>👤</span> Мой кабинет
+                            </Link>
+                        )}
 
+                        {/* Кнопка панели админа - показываем только админам */}
                         {isAdmin && (
-    <Link 
-        to="/admin"
-        className="btn btn-outline"
-        style={{
-            padding: '10px 20px',
-            borderRadius: '12px',
-            fontWeight: 600,
-            fontSize: '0.95rem',
-            background: 'transparent',
-            border: '2px solid rgba(255, 255, 255, 0.3)',
-            color: 'white',
-            cursor: 'pointer',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            textDecoration: 'none'
-        }}
-        onMouseOver={(e) => {
-            e.target.style.background = 'rgba(255, 215, 0, 0.1)';
-            e.target.style.borderColor = '#FFD700';
-            e.target.style.transform = 'translateY(-2px)';
-        }}
-        onMouseOut={(e) => {
-            e.target.style.background = 'transparent';
-            e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-            e.target.style.transform = 'translateY(0)';
-        }}
-    >
-        <span>👑</span> Панель админа
-    </Link>
-)}
+                            <Link
+                                to="/admin"
+                                className="btn btn-outline"
+                                style={{
+                                    padding: '10px 20px',
+                                    borderRadius: '12px',
+                                    fontWeight: 600,
+                                    fontSize: '0.95rem',
+                                    background: 'transparent',
+                                    border: '2px solid rgba(255, 255, 255, 0.3)',
+                                    color: 'white',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    textDecoration: 'none'
+                                }}
+                                onMouseOver={(e) => {
+                                    e.target.style.background = 'rgba(255, 215, 0, 0.1)';
+                                    e.target.style.borderColor = '#FFD700';
+                                    e.target.style.transform = 'translateY(-2px)';
+                                }}
+                                onMouseOut={(e) => {
+                                    e.target.style.background = 'transparent';
+                                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                                    e.target.style.transform = 'translateY(0)';
+                                }}
+                            >
+                                <span>👑</span> Панель админа
+                            </Link>
+                        )}
 
-                        <button 
+                        <button
                             onClick={handleLogout}
                             style={{
                                 padding: '12px 28px',
@@ -211,7 +214,7 @@ export default function Header({ token, setToken }) {
                         </button>
                     </>
                 ) : (
-                    <button 
+                    <button
                         onClick={() => setShowLogin(true)}
                         style={{
                             padding: '12px 28px',

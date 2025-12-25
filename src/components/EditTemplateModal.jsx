@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getConfig } from '../config';
 
-export default function CreateTemplateModal({ token, onClose, onSuccess }) {
+export default function EditTemplateModal({ token, templateId, onClose, onSuccess }) {
     const [form, setForm] = useState({
         title: '',
         description: '',
@@ -9,86 +9,216 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
         areaM2: '',
         rooms: '',
         basePrice: '',
-        isActive: true
+        isActive: true,
+        descriptionError: null
     });
     const [files, setFiles] = useState([]);
+    const [existingFiles, setExistingFiles] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [fetching, setFetching] = useState(true);
     const [dragOver, setDragOver] = useState(false);
+    const [initialDescription, setInitialDescription] = useState('');
+
+    useEffect(() => {
+        const fetchTemplate = async () => {
+            if (!templateId) {
+                setFetching(false);
+                return;
+            }
+
+            const { API_BASE_URL } = getConfig();
+
+            try {
+                setFetching(true);
+                const res = await fetch(`${API_BASE_URL}/api/templates/${templateId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+
+                if (!res.ok) {
+                    throw new Error(`Ошибка загрузки шаблона: ${res.status}`);
+                }
+
+                const template = await res.json();
+                // console.log('Получен шаблон:', template);
+
+                const description = template.description || '';
+                setInitialDescription(description);
+                setForm({
+                    title: template.title || '',
+                    description: description,
+                    style: template.style || '',
+                    areaM2: template.areaM2?.toString() || '',
+                    rooms: template.rooms?.toString() || '',
+                    basePrice: template.basePrice?.toString() || '',
+                    isActive: template.isActive !== undefined ? template.isActive : true,
+                    descriptionError: null
+                });
+                setExistingFiles(template.files || []);
+            } catch (err) {
+                console.error('Ошибка загрузки шаблона:', err);
+                alert('Не удалось загрузить данные шаблона: ' + err.message);
+                onClose?.();
+            } finally {
+                setFetching(false);
+            }
+        };
+
+        fetchTemplate();
+    }, [templateId, token, onClose]);
+
+    const validateForm = () => {
+        const errors = {};
+        let isValid = true;
+
+        // Проверка названия
+        if (!form.title.trim()) {
+            errors.title = 'Название обязательно';
+            isValid = false;
+        }
+
+        // Проверка описания
+        const descriptionToCheck = form.description || initialDescription;
+        if (!descriptionToCheck.trim()) {
+            errors.description = 'Описание обязательно для заполнения';
+            isValid = false;
+        } else if (descriptionToCheck.trim().length < 10) {
+            errors.description = 'Описание должно содержать минимум 10 символов';
+            isValid = false;
+        }
+
+        // Проверка площади
+        const areaM2 = parseFloat(form.areaM2);
+        if (!form.areaM2 || isNaN(areaM2) || areaM2 <= 0) {
+            errors.areaM2 = 'Площадь должна быть положительным числом';
+            isValid = false;
+        }
+
+        // Проверка комнат
+        const rooms = parseInt(form.rooms);
+        if (!form.rooms || isNaN(rooms) || rooms <= 0) {
+            errors.rooms = 'Количество комнат должно быть положительным целым числом';
+            isValid = false;
+        }
+
+        // Проверка цены
+        const basePrice = parseFloat(form.basePrice);
+        if (!form.basePrice || isNaN(basePrice) || basePrice <= 0) {
+            errors.basePrice = 'Базовая цена должна быть положительным числом';
+            isValid = false;
+        }
+
+        return { isValid, errors };
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!files.length) {
-            alert('Добавьте хотя бы одно изображение');
+
+        // Валидация формы
+        const validation = validateForm();
+        if (!validation.isValid) {
+            if (validation.errors.description) {
+                setForm(prev => ({ ...prev, descriptionError: validation.errors.description }));
+            }
+
+            alert('Пожалуйста, исправьте ошибки в форме:\n' + Object.values(validation.errors).join('\n'));
             return;
         }
 
         setLoading(true);
-        const { API_BASE_URL, TEMPLATES_CREATE_URL } = getConfig();
+        const { API_BASE_URL } = getConfig();
 
-        const formData = new FormData();
+        // Используем текущее значение description или начальное, если поле не менялось
+        const descriptionToSend = form.description !== '' ? form.description : initialDescription;
 
-        // Ключевое исправление 1: создаем корректный JSON объект
+        // Подготавливаем данные в том же формате, что и при создании
         const templateData = {
-            title: form.title,
-            description: form.description,
-            style: form.style,
+            title: form.title.trim(),
+            description: descriptionToSend.trim(),
+            style: form.style.trim() || '',
             areaM2: parseFloat(form.areaM2) || 0,
             rooms: parseInt(form.rooms) || 1,
             basePrice: parseInt(form.basePrice) || 0,
-            isActive: Boolean(form.isActive) // убеждаемся, что это boolean
+            isActive: Boolean(form.isActive)
         };
 
-        // Ключевое исправление 2: передаем строку JSON
+        //console.log('Отправляемые данные:', templateData);
+
+        const formData = new FormData();
+
+        // Используем тот же ключ, что и при создании
         formData.append('data', JSON.stringify(templateData));
 
-        files.forEach(file => formData.append('files', file));
+        // Используем тот же ключ для файлов, что и при создании
+        if (files && files.length > 0) {
+            files.forEach((file) => {
+                formData.append('files', file);
+            });
+        }
+
+        // Отладочный вывод содержимого FormData
+        // console.log('Содержимое FormData:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}:`, value);
+        }
 
         try {
-            const res = await fetch(`${API_BASE_URL}${TEMPLATES_CREATE_URL}`, {
-                method: 'POST',
+            //console.log('Отправка PUT запроса на обновление шаблона:', templateId);
+
+            const res = await fetch(`${API_BASE_URL}/api/templates/${templateId}`, {
+                method: 'PUT',
                 headers: {
-                    // НЕ добавляем Content-Type для FormData - браузер сам установит
-                    // с boundary для multipart/form-data
                     Authorization: `Bearer ${token}`
                 },
                 body: formData,
                 credentials: 'include'
             });
 
+            //console.log('Статус ответа:', res.status);
+
             if (!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                throw new Error(`Ошибка ${res.status}: ${errorData.message || 'Неизвестная ошибка'}`);
+                let errorMessage = `Ошибка ${res.status}`;
+                try {
+                    const errorData = await res.json().catch(() => ({}));
+                    console.error('Данные ошибки:', errorData);
+
+                    if (errorData.message || errorData.error) {
+                        errorMessage = `Ошибка ${res.status}: ${errorData.message || errorData.error}`;
+                    }
+                } catch (parseError) {
+                    console.error('Ошибка парсинга ответа:', parseError);
+                }
+                throw new Error(errorMessage);
             }
 
-            const result = await res.json();
-            console.log('Template created:', result);
+            const updatedTemplate = await res.json();
+            //console.log('Шаблон успешно обновлен:', updatedTemplate);
 
-            alert('Шаблон успешно создан!');
-
-            // Ключевое исправление 3: выполняем все действия последовательно
-            onClose(); // Сначала закрываем модал
-
-            // Даем небольшой таймаут для анимации закрытия
-            setTimeout(() => {
-                if (onSuccess) {
-                    onSuccess(result); // Вызываем колбек с данными
-                } else {
-                    // Если нет колбека, просто перезагружаем страницу
-                    window.location.reload();
-                }
-            }, 300);
-
+            alert('Шаблон успешно обновлен!');
+            onSuccess?.(updatedTemplate);
         } catch (err) {
-            console.error('Create template error:', err);
-            alert('Ошибка создания шаблона: ' + err.message);
+            console.error('Ошибка обновления шаблона:', err);
+            alert('Ошибка обновления шаблона: ' + err.message);
         } finally {
             setLoading(false);
         }
     };
 
+    const handleDescriptionChange = (e) => {
+        const value = e.target.value;
+        setForm(prev => ({
+            ...prev,
+            description: value,
+            descriptionError: null
+        }));
+    };
+
     const handleFileChange = (e) => {
-        const selectedFiles = Array.from(e.target.files);
-        setFiles(prev => [...prev, ...selectedFiles]);
+        const newFiles = Array.from(e.target.files);
+        setFiles(prev => [...prev, ...newFiles]);
     };
 
     const handleDragOver = (e) => {
@@ -103,28 +233,70 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
     const handleDrop = (e) => {
         e.preventDefault();
         setDragOver(false);
-        const droppedFiles = Array.from(e.dataTransfer.files);
-        setFiles(prev => [...prev, ...droppedFiles]);
+        const newFiles = Array.from(e.dataTransfer.files);
+        setFiles(prev => [...prev, ...newFiles]);
     };
 
-    const removeFile = (index) => {
+    const removeNewFile = (index) => {
         const newFiles = [...files];
         newFiles.splice(index, 1);
         setFiles(newFiles);
     };
 
-    // Валидация числовых полей перед отправкой
-    const validateForm = () => {
-        const errors = [];
+    const removeExistingFile = async (fileId) => {
+        if (!window.confirm('Вы уверены, что хотите удалить этот файл?')) return;
 
-        if (!form.title.trim()) errors.push('Название обязательно');
-        if (!form.areaM2 || parseFloat(form.areaM2) <= 0) errors.push('Площадь должна быть больше 0');
-        if (!form.rooms || parseInt(form.rooms) <= 0) errors.push('Количество комнат должно быть больше 0');
-        if (!form.basePrice || parseInt(form.basePrice) <= 0) errors.push('Базовая цена должна быть больше 0');
-        if (files.length === 0) errors.push('Добавьте хотя бы одно изображение');
+        const { API_BASE_URL } = getConfig();
 
-        return errors;
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/files/${fileId}`, {
+                method: 'DELETE',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!res.ok) {
+                const errorText = await res.text();
+                throw new Error(`Ошибка ${res.status}: ${errorText}`);
+            }
+
+            setExistingFiles(existingFiles.filter(f => f.id !== fileId));
+            alert('Файл успешно удален');
+        } catch (err) {
+            console.error('Ошибка удаления файла:', err);
+            alert('Ошибка удаления файла: ' + err.message);
+        }
     };
+
+    if (fetching) {
+        return (
+            <div style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+                backdropFilter: 'blur(6px)'
+            }}>
+                <div style={{
+                    background: 'linear-gradient(145deg, #ffffff, #f5f9ff)',
+                    borderRadius: '24px',
+                    padding: '3rem',
+                    textAlign: 'center',
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+                }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+                    <div style={{ fontSize: '1.2rem', color: '#666' }}>
+                        Загрузка данных шаблона...
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={{
@@ -146,7 +318,7 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                 maxHeight: '90vh',
                 overflowY: 'auto',
                 boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
-                borderTop: '6px solid #4CAF50',
+                borderTop: '6px solid #FF9800',
                 animation: 'modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
             }} onClick={e => e.stopPropagation()}>
 
@@ -182,7 +354,6 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                         e.target.style.color = '#666';
                         e.target.style.transform = 'rotate(0deg)';
                     }}
-                    disabled={loading}
                 >
                     ×
                 </button>
@@ -190,14 +361,14 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                     <h2 style={{
                         margin: '0 0 0.5rem',
-                        color: '#4CAF50',
+                        color: '#FF9800',
                         fontSize: '1.8rem',
                         fontWeight: 700
                     }}>
-                        🏠 Создать новый шаблон дома
+                        ✏️ Редактировать шаблон
                     </h2>
                     <p style={{ color: '#666', fontSize: '0.95rem' }}>
-                        Заполните все обязательные поля (*) для создания шаблона
+                        Редактирование проекта "{form.title}"
                     </p>
                 </div>
 
@@ -280,13 +451,14 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                             alignItems: 'center',
                             gap: '8px'
                         }}>
-                            Описание
+                            <span style={{ color: '#f44336' }}>*</span> Описание
                         </label>
                         <textarea
+                            required
                             style={{
                                 width: '100%',
                                 padding: '14px 16px',
-                                border: '2px solid #e3f2fd',
+                                border: form.descriptionError ? '2px solid #f44336' : '2px solid #e3f2fd',
                                 borderRadius: '12px',
                                 fontSize: '1rem',
                                 background: '#fafcff',
@@ -298,10 +470,43 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                             }}
                             rows="3"
                             value={form.description}
-                            onChange={e => setForm({ ...form, description: e.target.value })}
+                            onChange={handleDescriptionChange}
                             placeholder="Подробное описание дома, особенности планировки, материалы..."
                             disabled={loading}
                         />
+
+                        {form.descriptionError && (
+                            <div style={{
+                                color: '#f44336',
+                                fontSize: '0.85rem',
+                                marginTop: '0.5rem',
+                                padding: '8px 12px',
+                                background: '#ffebee',
+                                borderRadius: '8px',
+                                border: '1px solid #ffcdd2',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                <span>⚠️</span>
+                                <span>{form.descriptionError}</span>
+                            </div>
+                        )}
+
+                        <div style={{
+                            fontSize: '0.8rem',
+                            color: form.descriptionError ? '#f44336' : '#666',
+                            marginTop: '0.5rem',
+                            display: 'flex',
+                            justifyContent: 'space-between'
+                        }}>
+                            <span>
+                                Текущая длина: {(form.description || initialDescription).length} символов
+                            </span>
+                            <span>
+                                Минимум: 10 символов
+                            </span>
+                        </div>
                     </div>
 
                     <div style={{
@@ -370,6 +575,7 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                 required
                                 type="number"
                                 min="1"
+                                step="1"
                                 style={{
                                     width: '100%',
                                     padding: '14px 16px',
@@ -404,6 +610,7 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                     required
                                     type="number"
                                     min="0"
+                                    step="0.01"
                                     style={{
                                         width: '100%',
                                         padding: '14px 16px 14px 50px',
@@ -416,7 +623,7 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                     }}
                                     value={form.basePrice}
                                     onChange={e => setForm({ ...form, basePrice: e.target.value })}
-                                    placeholder="2500000"
+                                    placeholder="2500000.00"
                                     disabled={loading}
                                 />
                                 <span style={{
@@ -440,7 +647,7 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                 alignItems: 'center',
                                 gap: '8px'
                             }}>
-                                Статус шаблона
+                                Статус
                             </label>
                             <div style={{
                                 display: 'flex',
@@ -448,13 +655,14 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                 padding: '2px 15px 2px 2px',
                                 background: '#fafcff',
                                 borderRadius: '12px',
-                                border: '2px solid #e3f2fd'
+                                border: '2px solid #e3f2fd',
+                                opacity: loading ? 0.6 : 1
                             }}>
                                 <label style={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px',
-                                    cursor: 'pointer',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
                                     padding: '8px 12px',
                                     borderRadius: '8px',
                                     flex: 1,
@@ -468,7 +676,7 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                         checked={form.isActive === true}
                                         onChange={() => setForm({ ...form, isActive: true })}
                                         style={{
-                                            cursor: 'pointer',
+                                            cursor: loading ? 'not-allowed' : 'pointer',
                                             accentColor: '#4CAF50'
                                         }}
                                         disabled={loading}
@@ -486,7 +694,7 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px',
-                                    cursor: 'pointer',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
                                     padding: '8px 12px',
                                     borderRadius: '8px',
                                     flex: 1,
@@ -500,7 +708,7 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                         checked={form.isActive === false}
                                         onChange={() => setForm({ ...form, isActive: false })}
                                         style={{
-                                            cursor: 'pointer',
+                                            cursor: loading ? 'not-allowed' : 'pointer',
                                             accentColor: '#FF9800'
                                         }}
                                         disabled={loading}
@@ -513,17 +721,6 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                         Неактивен
                                     </span>
                                 </label>
-                            </div>
-                            <div style={{
-                                fontSize: '0.85rem',
-                                color: '#666',
-                                marginTop: '8px',
-                                paddingLeft: '5px'
-                            }}>
-                                {form.isActive
-                                    ? 'Шаблон будет доступен для заказа пользователям'
-                                    : 'Шаблон будет скрыт от пользователей'
-                                }
                             </div>
                         </div>
                     </div>
@@ -538,7 +735,79 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                             alignItems: 'center',
                             gap: '8px'
                         }}>
-                            <span style={{ color: '#f44336' }}>*</span> Фотографии и документы
+                            Существующие файлы
+                        </label>
+
+                        {existingFiles.length > 0 ? (
+                            <div style={{
+                                maxHeight: '200px',
+                                overflowY: 'auto',
+                                background: '#fafafa',
+                                borderRadius: '8px',
+                                padding: '1rem',
+                                marginBottom: '1rem'
+                            }}>
+                                {existingFiles.map((file, index) => (
+                                    <div key={file.id} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '8px 12px',
+                                        background: 'white',
+                                        borderRadius: '8px',
+                                        marginBottom: '5px',
+                                        border: '1px solid #e0e0e0'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{ fontSize: '1.2rem' }}>
+                                                {file.fileRole === 'document' ? '📄' : '🖼️'}
+                                            </span>
+                                            <span style={{ fontSize: '0.9rem' }}>{file.filename}</span>
+                                            <span style={{
+                                                fontSize: '0.8rem',
+                                                color: '#78909c',
+                                                marginLeft: '10px'
+                                            }}>
+                                                {file.fileSize && `(${(file.fileSize / 1024 / 1024).toFixed(2)} MB)`}
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeExistingFile(file.id)}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: '#f44336',
+                                                fontSize: '1.5rem',
+                                                cursor: 'pointer',
+                                                padding: '0 5px',
+                                                transition: 'color 0.2s'
+                                            }}
+                                            onMouseOver={(e) => e.target.style.color = '#d32f2f'}
+                                            onMouseOut={(e) => e.target.style.color = '#f44336'}
+                                            disabled={loading}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p style={{ color: '#999', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                                Нет загруженных файлов
+                            </p>
+                        )}
+
+                        <label style={{
+                            display: 'block',
+                            marginBottom: '0.5rem',
+                            fontWeight: 600,
+                            color: '#333',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                            Добавить новые файлы
                         </label>
 
                         <div
@@ -551,7 +820,7 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                 background: dragOver ? '#e3f2fd' : '#f8fdff',
                                 cursor: loading ? 'not-allowed' : 'pointer',
                                 position: 'relative',
-                                opacity: loading ? 0.7 : 1
+                                opacity: loading ? 0.6 : 1
                             }}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
@@ -589,7 +858,7 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                     alignItems: 'center',
                                     gap: '8px'
                                 }}>
-                                    <span>📁</span> Выбрано файлов: {files.length}
+                                    <span>📁</span> Новые файлы: {files.length}
                                 </div>
                                 <div style={{
                                     maxHeight: '200px',
@@ -624,10 +893,7 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    removeFile(index);
-                                                }}
+                                                onClick={() => removeNewFile(index)}
                                                 style={{
                                                     background: 'none',
                                                     border: 'none',
@@ -676,7 +942,7 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                 fontWeight: 600,
                                 background: loading
                                     ? '#bdbdbd'
-                                    : 'linear-gradient(135deg, #4CAF50, #2E7D32)',
+                                    : 'linear-gradient(135deg, #FF9800, #F57C00)',
                                 color: 'white',
                                 border: 'none',
                                 cursor: loading ? 'not-allowed' : 'pointer',
@@ -698,11 +964,11 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                         borderTopColor: 'white',
                                         animation: 'spin 1s ease-in-out infinite'
                                     }}></span>
-                                    Создаём...
+                                    Обновляем...
                                 </span>
                             ) : (
                                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                                    <span>✅</span> Создать шаблон
+                                    <span>💾</span> Обновить шаблон
                                 </span>
                             )}
                         </button>
@@ -723,18 +989,17 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                                 opacity: loading ? 0.5 : 1
                             }}
                             onMouseOver={(e) => {
-                                e.target.style.background = '#f5f5f5',
-                                    e.target.style.borderColor = '#2196F3',
-                                    e.target.style.color = '#2196F3',
-                                    e.target.style.transform = 'translateY(-2px)'
+                                e.target.style.background = '#f5f5f5';
+                                e.target.style.borderColor = '#2196F3';
+                                e.target.style.color = '#2196F3';
+                                e.target.style.transform = 'translateY(-2px)';
                             }}
                             onMouseOut={(e) => {
-                                e.target.style.background = 'transparent',
-                                    e.target.style.borderColor = '#e0e0e0',
-                                    e.target.style.color = '#666',
-                                    e.target.style.transform = 'translateY(0)'
+                                e.target.style.background = 'transparent';
+                                e.target.style.borderColor = '#e0e0e0';
+                                e.target.style.color = '#666';
+                                e.target.style.transform = 'translateY(0)';
                             }}
-
                             disabled={loading}
                         >
                             Отмена
@@ -758,6 +1023,61 @@ export default function CreateTemplateModal({ token, onClose, onSuccess }) {
                 @keyframes spin {
                     to { transform: rotate(360deg); }
                 }
+                
+                /* Стили для кастомного скроллбара */
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 8px 0; /* Отступы сверху и снизу */
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    border: 4px solid transparent; /* Отступы вокруг бегунка */
+    background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+    border: 4px solid transparent;
+    background-clip: padding-box;
+}
+
+/* Для внутренних контейнеров с прокруткой */
+div[style*="overflowY: auto"] {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+    padding-right: 4px;
+}
+
+div[style*="overflowY: auto"]::-webkit-scrollbar {
+    width: 8px;
+}
+
+div[style*="overflowY: auto"]::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 4px 0; /* Меньшие отступы */
+    border-radius: 8px;
+}
+
+div[style*="overflowY: auto"]::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    border: 3px solid transparent; /* Отступы поменьше */
+    background-clip: padding-box;
+    min-height: 30px; /* Минимальная высота */
+}
+
+div[style*="overflowY: auto"]::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.25);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+}
             `}</style>
         </div>
     );

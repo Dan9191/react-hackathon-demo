@@ -3,17 +3,17 @@ import { getConfig } from '../config';
 
 export default function OrderModal({ token, templateId, templateTitle, onClose, onSuccess }) {
     const [form, setForm] = useState({
-        address: '',
-        comment: ''
+        contact: ''
     });
+    const [contactType, setContactType] = useState('telegram'); // По умолчанию Telegram
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        if (!form.address.trim()) {
-            setError('Пожалуйста, укажите адрес строительства');
+
+        if (!form.contact.trim()) {
+            setError('Пожалуйста, укажите контактные данные');
             return;
         }
 
@@ -21,43 +21,44 @@ export default function OrderModal({ token, templateId, templateTitle, onClose, 
         setError('');
 
         const { API_BASE_URL } = getConfig();
-        const orderData = {
-            projectId: parseInt(templateId),
-            address: form.address.trim(),
-            comment: form.comment.trim() || undefined
+        const applicationData = {
+            templateId: parseInt(templateId),
+            contact: form.contact.trim()
         };
-        console.log(orderData);
+
+        console.log('Sending application:', applicationData);
+
         try {
-            const res = await fetch(`${API_BASE_URL}/api/orders`, {
+            const res = await fetch(`${API_BASE_URL}/api/applications`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify(orderData)
+                body: JSON.stringify(applicationData)
             });
 
             if (!res.ok) {
                 const text = await res.text();
                 let errorMessage = `Ошибка ${res.status}`;
-                
+
                 try {
                     const errorData = JSON.parse(text);
                     errorMessage = errorData.message || errorMessage;
                 } catch {
                     errorMessage = text || errorMessage;
                 }
-                
+
                 throw new Error(errorMessage);
             }
 
             const data = await res.json();
-            console.log('Order created:', data);
+            console.log('Application created:', data);
             onSuccess();
-            
+
         } catch (err) {
-            console.error('Create order error:', err);
-            setError('Ошибка создания заказа: ' + err.message);
+            console.error('Create application error:', err);
+            setError('Ошибка создания заявки: ' + err.message);
         } finally {
             setLoading(false);
         }
@@ -70,6 +71,44 @@ export default function OrderModal({ token, templateId, templateTitle, onClose, 
             [name]: value
         }));
         if (error) setError('');
+    };
+
+    const handleContactTypeChange = (type) => {
+        setContactType(type);
+        // Очищаем поле контакта при смене типа
+        setForm({ contact: '' });
+    };
+
+    const getPlaceholder = () => {
+        switch (contactType) {
+            case 'telegram':
+                return '@username или +79123456789';
+            case 'whatsapp':
+                return '+79123456789';
+            case 'vk':
+                return 'id1234567 или https://vk.com/username';
+
+            case 'phone':
+                return '+7 (123) 456-78-90';
+            default:
+                return 'Контактные данные';
+        }
+    };
+
+    const getIcon = () => {
+        switch (contactType) {
+            case 'telegram':
+                return '📱';
+            case 'whatsapp':
+                return '💬';
+            case 'vk':
+                return '👥';
+
+            case 'phone':
+                return '📞';
+            default:
+                return '📝';
+        }
     };
 
     return (
@@ -94,8 +133,8 @@ export default function OrderModal({ token, templateId, templateTitle, onClose, 
                 borderTop: '6px solid #4CAF50',
                 animation: 'modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
             }} onClick={e => e.stopPropagation()}>
-                
-                <button 
+
+                <button
                     onClick={onClose}
                     style={{
                         position: 'absolute',
@@ -131,16 +170,16 @@ export default function OrderModal({ token, templateId, templateTitle, onClose, 
                 </button>
 
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                    <h2 style={{ 
-                        margin: '0 0 0.5rem', 
-                        color: '#4CAF50', 
+                    <h2 style={{
+                        margin: '0 0 0.5rem',
+                        color: '#4CAF50',
                         fontSize: '1.8rem',
                         fontWeight: 700
                     }}>
-                        📝 Оформление заказа
+                        📝 Оставить заявку
                     </h2>
-                    <p style={{ 
-                        color: '#666', 
+                    <p style={{
+                        color: '#666',
                         fontSize: '1rem',
                         background: '#e8f5e9',
                         padding: '0.5rem 1rem',
@@ -163,73 +202,106 @@ export default function OrderModal({ token, templateId, templateTitle, onClose, 
                             alignItems: 'center',
                             gap: '8px'
                         }}>
-                            <span style={{ color: '#f44336' }}>*</span> Адрес строительства
+                            <span style={{ color: '#f44336' }}>*</span> Способ связи
                         </label>
-                        <input
-                            required
-                            name="address"
-                            style={{
-                                width: '100%',
-                                padding: '14px 16px',
-                                border: '2px solid #e3f2fd',
-                                borderRadius: '12px',
-                                fontSize: '1rem',
-                                background: '#fafcff',
-                                transition: 'all 0.3s ease',
-                                boxSizing: 'border-box'
-                            }}
-                            value={form.address}
-                            onChange={handleChange}
-                            placeholder="г. Москва, ул. Ленина, д. 10"
-                            disabled={loading}
-                        />
-                        <p style={{
-                            fontSize: '0.85rem',
-                            color: '#666',
-                            marginTop: '0.5rem'
-                        }}>
-                            Укажите полный адрес, где планируется строительство
-                        </p>
-                    </div>
 
-                    <div style={{ marginBottom: '2rem' }}>
-                        <label style={{
-                            display: 'block',
-                            marginBottom: '0.5rem',
-                            fontWeight: 600,
-                            color: '#333',
+                        {/* Выбор типа контакта */}
+                        <div style={{
                             display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
+                            flexWrap: 'wrap',
+                            gap: '8px',
+                            marginBottom: '1rem',
+                            padding: '10px',
+                            background: '#f8f9fa',
+                            borderRadius: '10px',
+                            border: '1px solid #e0e0e0'
                         }}>
-                            Комментарий к заказу
-                        </label>
-                        <textarea
-                            name="comment"
-                            style={{
-                                width: '100%',
-                                padding: '14px 16px',
-                                border: '2px solid #e3f2fd',
-                                borderRadius: '12px',
-                                fontSize: '1rem',
-                                background: '#fafcff',
-                                transition: 'all 0.3s ease',
-                                boxSizing: 'border-box',
-                                minHeight: '120px',
-                                resize: 'vertical',
-                                fontFamily: 'inherit'
-                            }}
-                            value={form.comment}
-                            onChange={handleChange}
-                            placeholder="Участок с уклоном, особые пожелания, предпочтения по материалам..."
-                            disabled={loading}
-                        />
+                            {[
+                                { type: 'telegram', label: 'Telegram', icon: '📱' },
+                                { type: 'whatsapp', label: 'WhatsApp', icon: '💬' },
+                                { type: 'vk', label: 'ВКонтакте', icon: '👥' },
+                                { type: 'phone', label: 'Телефон', icon: '📞' }
+                            ].map(item => (
+                                <button
+                                    key={item.type}
+                                    type="button"
+                                    onClick={() => handleContactTypeChange(item.type)}
+                                    style={{
+                                        flex: 1,
+                                        minWidth: '80px',
+                                        padding: '10px 8px',
+                                        borderRadius: '8px',
+                                        border: contactType === item.type
+                                            ? '2px solid #4CAF50'
+                                            : '1px solid #e0e0e0',
+                                        background: contactType === item.type
+                                            ? '#e8f5e9'
+                                            : '#ffffff',
+                                        color: contactType === item.type
+                                            ? '#2E7D32'
+                                            : '#666',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: '5px',
+                                        fontSize: '0.85rem',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <span style={{ fontSize: '1.2rem' }}>{item.icon}</span>
+                                    <span>{item.label}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Поле для ввода контакта */}
+                        <div style={{ position: 'relative' }}>
+                            <div style={{
+                                position: 'absolute',
+                                left: '16px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                fontSize: '1.2rem',
+                                color: '#4CAF50'
+                            }}>
+                                {getIcon()}
+                            </div>
+                            <input
+                                required
+                                name="contact"
+                                style={{
+                                    width: '100%',
+                                    padding: '14px 16px 14px 50px',
+                                    border: '2px solid #e3f2fd',
+                                    borderRadius: '12px',
+                                    fontSize: '1rem',
+                                    background: '#fafcff',
+                                    transition: 'all 0.3s ease',
+                                    boxSizing: 'border-box'
+                                }}
+                                value={form.contact}
+                                onChange={handleChange}
+                                placeholder={getPlaceholder()}
+                                disabled={loading}
+                            />
+                        </div>
+
+                        {/* Подсказка для текущего типа контакта */}
                         <p style={{
                             fontSize: '0.85rem',
                             color: '#666',
-                            marginTop: '0.5rem'
+                            marginTop: '0.5rem',
+                            padding: '8px 12px',
+                            background: '#f0f8ff',
+                            borderRadius: '6px',
+                            borderLeft: '3px solid #2196F3'
                         }}>
-                            Укажите дополнительные сведения, которые помогут в проектировании
+                            {contactType === 'telegram' && 'Введите @username или номер телефона для Telegram'}
+                            {contactType === 'whatsapp' && 'Введите номер телефона для WhatsApp'}
+                            {contactType === 'vk' && 'Введите ID страницы или ссылку на ВКонтакте'}
+                            {contactType === 'email' && 'Введите адрес электронной почты'}
+                            {contactType === 'phone' && 'Введите номер телефона для звонка'}
                         </p>
                     </div>
 
@@ -247,9 +319,9 @@ export default function OrderModal({ token, templateId, templateTitle, onClose, 
                         </div>
                     )}
 
-                    <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'center', 
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
                         gap: '1rem'
                     }}>
                         <button
@@ -285,7 +357,7 @@ export default function OrderModal({ token, templateId, templateTitle, onClose, 
                                 </span>
                             ) : (
                                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                                    <span>✅</span> Создать заказ
+                                    <span>✅</span> Отправить заявку
                                 </span>
                             )}
                         </button>
@@ -332,7 +404,7 @@ export default function OrderModal({ token, templateId, templateTitle, onClose, 
                         textAlign: 'center'
                     }}>
                         <p style={{ margin: 0 }}>
-                            ⏰ После оформления заказа с вами свяжется наш менеджер в течение 24 часов
+                            ⏰ После отправки заявки с вами свяжется наш менеджер в течение 24 часов
                         </p>
                     </div>
                 </form>

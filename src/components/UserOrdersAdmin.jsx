@@ -28,26 +28,26 @@ export default function UserOrdersAdmin({ token }) {
     const fetchUserAndOrders = async () => {
         try {
             const { API_BASE_URL } = getConfig();
-            
+
             // Получаем пользователя
             const userRes = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
+
             if (!userRes.ok) throw new Error('Пользователь не найден');
             const userData = await userRes.json();
             setUser(userData);
-            
+
             // Получаем заказы пользователя
             const ordersRes = await fetch(`${API_BASE_URL}/api/users/${userId}/orders`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
+
             if (ordersRes.ok) {
                 const ordersData = await ordersRes.json();
                 setOrders(ordersData);
             }
-            
+
             setLoading(false);
         } catch (err) {
             console.error('Ошибка загрузки:', err);
@@ -62,7 +62,7 @@ export default function UserOrdersAdmin({ token }) {
             const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
+
             if (response.ok) {
                 return await response.json();
             }
@@ -94,7 +94,7 @@ export default function UserOrdersAdmin({ token }) {
             });
 
             if (!response.ok) throw new Error('Ошибка обновления статуса');
-            
+
             alert('Статус успешно обновлен');
             setShowStatusModal(false);
             setNewStatus('');
@@ -127,7 +127,7 @@ export default function UserOrdersAdmin({ token }) {
             });
 
             if (!response.ok) throw new Error('Ошибка добавления этапа');
-            
+
             alert('Этап успешно добавлен');
             setShowStageModal(false);
             setNewStage({
@@ -155,7 +155,7 @@ export default function UserOrdersAdmin({ token }) {
             });
 
             if (!response.ok) throw new Error('Ошибка обновления этапа');
-            
+
             alert('Этап успешно обновлен');
             fetchUserAndOrders();
         } catch (err) {
@@ -209,7 +209,7 @@ export default function UserOrdersAdmin({ token }) {
 
             {/* Кнопка создания новой заявки */}
             <div className="create-application-section">
-                <Link 
+                <Link
                     to={`/admin/user/${userId}/create-application`}
                     className="btn btn-primary btn-large"
                 >
@@ -256,7 +256,7 @@ export default function UserOrdersAdmin({ token }) {
                                         </span>
                                     </div>
                                 )}
-                                <button 
+                                <button
                                     onClick={() => {
                                         setSelectedOrder(order);
                                         setShowStatusModal(true);
@@ -271,7 +271,7 @@ export default function UserOrdersAdmin({ token }) {
                             <div className="stages-section">
                                 <div className="section-header">
                                     <h4>🏗️ Этапы строительства</h4>
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setSelectedOrder(order);
                                             setShowStageModal(true);
@@ -281,7 +281,7 @@ export default function UserOrdersAdmin({ token }) {
                                         ➕ Добавить этап
                                     </button>
                                 </div>
-                                
+
                                 {order.stages && order.stages.length > 0 ? (
                                     <div className="stages-list">
                                         {order.stages.map(stage => (
@@ -292,17 +292,17 @@ export default function UserOrdersAdmin({ token }) {
                                                         <p className="stage-type">{stage.stageType}</p>
                                                     </div>
                                                     <span className={`stage-status ${stage.status}`}>
-                                                        {stage.status === 'completed' ? '✅' : 
-                                                         stage.status === 'in_progress' ? '🔄' : 
-                                                         stage.status === 'delayed' ? '⚠️' : '⏸️'}
+                                                        {stage.status === 'completed' ? '✅' :
+                                                            stage.status === 'in_progress' ? '🔄' :
+                                                                stage.status === 'delayed' ? '⚠️' : '⏸️'}
                                                         {stage.status === 'completed' ? 'Завершен' :
-                                                         stage.status === 'in_progress' ? 'В процессе' :
-                                                         stage.status === 'delayed' ? 'Задержан' : 'Не начат'}
+                                                            stage.status === 'in_progress' ? 'В процессе' :
+                                                                stage.status === 'delayed' ? 'Задержан' : 'Не начат'}
                                                     </span>
                                                 </div>
-                                                
+
                                                 <p className="stage-description">{stage.description}</p>
-                                                
+
                                                 <div className="stage-dates">
                                                     <span>Начало: {new Date(stage.startDate).toLocaleDateString('ru-RU')}</span>
                                                     <span>План: {new Date(stage.plannedEndDate).toLocaleDateString('ru-RU')}</span>
@@ -310,19 +310,19 @@ export default function UserOrdersAdmin({ token }) {
                                                         <span>Факт: {new Date(stage.actualEndDate).toLocaleDateString('ru-RU')}</span>
                                                     )}
                                                 </div>
-                                                
+
                                                 <div className="stage-progress">
                                                     <div className="progress-bar">
-                                                        <div 
+                                                        <div
                                                             className="progress-fill"
                                                             style={{ width: `${stage.progress || 0}%` }}
                                                         ></div>
                                                     </div>
                                                     <span>{stage.progress || 0}%</span>
                                                 </div>
-                                                
+
                                                 <div className="stage-actions">
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleUpdateStage(order.id, stage.id, {
                                                             status: 'completed',
                                                             actualEndDate: new Date().toISOString()
@@ -331,7 +331,7 @@ export default function UserOrdersAdmin({ token }) {
                                                     >
                                                         ✅ Завершить
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleUpdateStage(order.id, stage.id, {
                                                             progress: Math.min(100, (stage.progress || 0) + 25)
                                                         })}
@@ -350,13 +350,13 @@ export default function UserOrdersAdmin({ token }) {
 
                             {/* Действия с заказом */}
                             <div className="order-actions">
-                                <button 
+                                <button
                                     onClick={() => fetchOrderDetails(order.id)}
                                     className="btn btn-outline"
                                 >
                                     🔍 Подробнее
                                 </button>
-                                <Link 
+                                <Link
                                     to={`/template/${order.projectInfo?.id}`}
                                     className="btn btn-outline"
                                 >
@@ -366,7 +366,7 @@ export default function UserOrdersAdmin({ token }) {
                         </div>
                     </div>
                 ))}
-                
+
                 {orders.length === 0 && (
                     <div className="empty-state">
                         <div>📭</div>
@@ -387,7 +387,7 @@ export default function UserOrdersAdmin({ token }) {
                         <div className="modal-body">
                             <div className="form-group">
                                 <label>Новый статус:</label>
-                                <select 
+                                <select
                                     value={newStatus}
                                     onChange={(e) => setNewStatus(e.target.value)}
                                     className="form-control"
@@ -400,13 +400,13 @@ export default function UserOrdersAdmin({ token }) {
                                 </select>
                             </div>
                             <div className="modal-actions">
-                                <button 
+                                <button
                                     onClick={() => handleAddStatus(selectedOrder.id)}
                                     className="btn btn-primary"
                                 >
                                     Сохранить
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setShowStatusModal(false)}
                                     className="btn btn-outline"
                                 >
@@ -428,20 +428,20 @@ export default function UserOrdersAdmin({ token }) {
                         <div className="modal-body">
                             <div className="form-group">
                                 <label>Тип этапа:</label>
-                                <input 
+                                <input
                                     type="text"
                                     value={newStage.stageType}
-                                    onChange={(e) => setNewStage({...newStage, stageType: e.target.value})}
+                                    onChange={(e) => setNewStage({ ...newStage, stageType: e.target.value })}
                                     placeholder="foundation, walls, roof..."
                                     className="form-control"
                                 />
                             </div>
                             <div className="form-group">
                                 <label>Название этапа:</label>
-                                <input 
+                                <input
                                     type="text"
                                     value={newStage.stageName}
-                                    onChange={(e) => setNewStage({...newStage, stageName: e.target.value})}
+                                    onChange={(e) => setNewStage({ ...newStage, stageName: e.target.value })}
                                     placeholder="Заливка фундамента"
                                     className="form-control"
                                     required
@@ -449,9 +449,9 @@ export default function UserOrdersAdmin({ token }) {
                             </div>
                             <div className="form-group">
                                 <label>Описание:</label>
-                                <textarea 
+                                <textarea
                                     value={newStage.description}
-                                    onChange={(e) => setNewStage({...newStage, description: e.target.value})}
+                                    onChange={(e) => setNewStage({ ...newStage, description: e.target.value })}
                                     placeholder="Подготовка основания, установка опалубки..."
                                     className="form-control"
                                     rows="3"
@@ -459,21 +459,21 @@ export default function UserOrdersAdmin({ token }) {
                             </div>
                             <div className="form-group">
                                 <label>Плановая дата завершения:</label>
-                                <input 
+                                <input
                                     type="date"
                                     value={newStage.plannedEndDate}
-                                    onChange={(e) => setNewStage({...newStage, plannedEndDate: e.target.value})}
+                                    onChange={(e) => setNewStage({ ...newStage, plannedEndDate: e.target.value })}
                                     className="form-control"
                                 />
                             </div>
                             <div className="modal-actions">
-                                <button 
+                                <button
                                     onClick={() => handleAddStage(selectedOrder.id)}
                                     className="btn btn-primary"
                                 >
                                     Добавить этап
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setShowStageModal(false)}
                                     className="btn btn-outline"
                                 >
