@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getConfig } from '../config';
+import OrderDocuments from './OrderDocuments';
+import OrderConstruction from './OrderConstruction';
 
 export default function UserOrders({ token }) {
     const navigate = useNavigate();
@@ -11,8 +13,10 @@ export default function UserOrders({ token }) {
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
     const [pageSize, setPageSize] = useState(10);
+    const [expandedOrderId, setExpandedOrderId] = useState(null);
+    const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'documents', 'construction'
 
-    useEffect(() => {
+ useEffect(() => {
         if (!token) {
             setError('Необходимо авторизоваться');
             setLoading(false);
@@ -74,12 +78,14 @@ export default function UserOrders({ token }) {
         switch (status) {
             case 'new':
                 return '#2196F3'; // синий - новый
-            case 'in_progress':
-                return '#FF9800'; // оранжевый - в работе
-            case 'on_hold':
-                return '#9C27B0'; // фиолетовый - приостановлен
-            case 'completed':
-                return '#4CAF50'; // зеленый - завершен
+            case 'documentation':
+                return '#9C27B0'; // фиолетовый - документация
+            case 'construction':
+                return '#FF9800'; // оранжевый - строительство
+            case 'completion':
+                return '#4CAF50'; // зеленый - подготовка к сдаче
+            case 'closed':
+                return '#607D8B'; // сине-серый - сдача (завершение)
             case 'cancelled':
                 return '#F44336'; // красный - отменен
             default:
@@ -94,12 +100,14 @@ export default function UserOrders({ token }) {
         switch (status) {
             case 'new':
                 return 'Новый';
-            case 'in_progress':
-                return 'В работе';
-            case 'on_hold':
-                return 'Приостановлен';
-            case 'completed':
-                return 'Завершен';
+            case 'documentation':
+                return 'Подготовка документов';
+            case 'construction':
+                return 'Строительство';
+            case 'completion':
+                return 'Подготовка к сдаче';
+            case 'closed':
+                return 'Сдача (Завершено)';
             case 'cancelled':
                 return 'Отменен';
             default:
@@ -208,7 +216,7 @@ export default function UserOrders({ token }) {
     const handlePageSizeChange = (e) => {
         const newSize = parseInt(e.target.value);
         setPageSize(newSize);
-        setPage(1);
+        setPage(0);
     };
 
     const handleRetry = () => {
@@ -219,6 +227,28 @@ export default function UserOrders({ token }) {
     const handleTabChange = (tab) => {
         if (tab === 'applications') {
             navigate('/profile/applications');
+        }
+    };
+
+    const toggleOrderDetails = (orderId) => {
+        if (expandedOrderId === orderId) {
+            setExpandedOrderId(null);
+            setActiveTab('orders');
+        } else {
+            setExpandedOrderId(orderId);
+            setActiveTab('orders');
+        }
+    };
+
+    const handleOrderAction = (order, action) => {
+        if (action === 'documents' && order.currentStatus?.statusType?.toLowerCase() === 'documentation') {
+            setExpandedOrderId(order.id);
+            setActiveTab('documents');
+        } else if (action === 'construction' && order.currentStatus?.statusType?.toLowerCase() === 'construction') {
+            setExpandedOrderId(order.id);
+            setActiveTab('construction');
+        } else if (action === 'view') {
+            navigate(`/template/${order.projectInfo?.id}`);
         }
     };
 
@@ -255,9 +285,7 @@ export default function UserOrders({ token }) {
     }
 
     return (
-        <div style={{
-
-        }}>
+        <div style={{ }}>
 
             {loading ? (
                 <div style={{
@@ -299,7 +327,7 @@ export default function UserOrders({ token }) {
                         textAlign: 'left'
                     }}>
                         <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold' }}>Детали:</p>
-                        <p style={{ margin: '0 0 0.5rem 0' }}>URL запроса: https://api.mos-hack.ru/api/orders?page=1&pageSize=10</p>
+                        <p style={{ margin: '0 0 0.5rem 0' }}>URL запроса: https://api.mos-hack.ru/api/orders?page=0&pageSize=10</p>
                         <p style={{ margin: 0 }}>Проверьте консоль браузера для получения дополнительной информации</p>
                     </div>
 
@@ -460,11 +488,13 @@ export default function UserOrders({ token }) {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             {orders.map(order => {
+                                const isExpanded = expandedOrderId === order.id;
+                                const orderStatus = order.currentStatus?.statusType?.toLowerCase();
                                 const progress = calculateProgress(order.currentStage);
 
                                 return (
                                     <div key={order.id} style={{
-                                        border: '1px solid #e0e0e0',
+                                        border: `1px solid ${isExpanded ? '#2196F3' : '#e0e0e0'}`,
                                         borderRadius: '12px',
                                         overflow: 'hidden',
                                         transition: 'all 0.3s ease'
@@ -476,8 +506,9 @@ export default function UserOrders({ token }) {
                                             alignItems: 'center',
                                             padding: '1.5rem',
                                             background: '#f8f9fa',
-                                            borderBottom: '1px solid #e0e0e0'
-                                        }}>
+                                            borderBottom: '1px solid #e0e0e0',
+                                            cursor: 'pointer'
+                                        }} onClick={() => toggleOrderDetails(order.id)}>
                                             <div>
                                                 <h3 style={{
                                                     color: '#1a237e',
@@ -491,289 +522,398 @@ export default function UserOrders({ token }) {
                                                     <span>📍 Адрес: {order.address || 'Не указан'}</span>
                                                 </div>
                                             </div>
-                                            <div style={{
-                                                padding: '8px 16px',
-                                                borderRadius: '20px',
-                                                background: getStatusColor(order.currentStatus?.statusType),
-                                                color: 'white',
-                                                fontWeight: 600,
-                                                fontSize: '0.9rem'
-                                            }}>
-                                                {getStatusText(order.currentStatus?.statusType)}
-                                            </div>
-                                        </div>
-
-                                        {/* Детали заказа */}
-                                        <div style={{ padding: '1.5rem' }}>
-                                            {/* Общая информация о заказе */}
-                                            <div style={{
-                                                display: 'grid',
-                                                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                                                gap: '1.5rem',
-                                                marginBottom: '1.5rem'
-                                            }}>
-                                                {/* Информация о проекте */}
-                                                <div>
-                                                    <h4 style={{
-                                                        color: '#37474f',
-                                                        margin: '0 0 0.5rem 0',
-                                                        fontSize: '1rem',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '8px'
-                                                    }}>
-                                                        <span>🏠</span> Проект
-                                                    </h4>
-                                                    <p style={{
-                                                        color: '#546e7a',
-                                                        margin: '0 0 0.25rem 0',
-                                                        fontSize: '1.1rem',
-                                                        fontWeight: 500
-                                                    }}>
-                                                        {order.projectInfo?.title || 'Не указан'}
-                                                    </p>
-                                                    <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: '#666' }}>
-                                                        <span>Площадь: {order.projectInfo?.totalArea || '—'} м²</span>
-                                                        <span>Цена: {formatPrice(order.projectInfo?.basePrice)}</span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Статус заказа */}
-                                                <div>
-                                                    <h4 style={{
-                                                        color: '#37474f',
-                                                        margin: '0 0 0.5rem 0',
-                                                        fontSize: '1rem',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '8px'
-                                                    }}>
-                                                        <span>📊</span> Статус заказа
-                                                    </h4>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <div style={{
-                                                            width: '10px',
-                                                            height: '10px',
-                                                            borderRadius: '50%',
-                                                            background: getStatusColor(order.currentStatus?.statusType)
-                                                        }}></div>
-                                                        <span style={{
-                                                            color: '#546e7a',
-                                                            fontSize: '1rem'
-                                                        }}>
-                                                            {getStatusText(order.currentStatus?.statusType)}
-                                                        </span>
-                                                    </div>
-                                                    {order.currentStatus?.comment && (
-                                                        <p style={{
-                                                            fontSize: '0.9rem',
-                                                            color: '#666',
-                                                            margin: '0.5rem 0 0 0',
-                                                            fontStyle: 'italic'
-                                                        }}>
-                                                            Комментарий: {order.currentStatus.comment}
-                                                        </p>
-                                                    )}
-                                                    {order.currentStatus?.changedBy && (
-                                                        <p style={{
-                                                            fontSize: '0.85rem',
-                                                            color: '#999',
-                                                            margin: '0.25rem 0 0 0'
-                                                        }}>
-                                                            Изменен: {order.currentStatus.changedBy.fullName} ({order.currentStatus.changedBy.role})
-                                                        </p>
-                                                    )}
-                                                </div>
-
-                                                {/* Информация о клиенте */}
-                                                {order.clientInfo && (
-                                                    <div>
-                                                        <h4 style={{
-                                                            color: '#37474f',
-                                                            margin: '0 0 0.5rem 0',
-                                                            fontSize: '1rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '8px'
-                                                        }}>
-                                                            <span>👤</span> Клиент
-                                                        </h4>
-                                                        <p style={{ color: '#546e7a', margin: 0 }}>
-                                                            {order.clientInfo.fullName || 'Не указано'}
-                                                        </p>
-                                                        {order.clientInfo.email && (
-                                                            <p style={{
-                                                                fontSize: '0.9rem',
-                                                                color: '#666',
-                                                                margin: '0.25rem 0 0 0'
-                                                            }}>
-                                                                {order.clientInfo.email}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Текущий этап строительства */}
-                                            {order.currentStage && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                                 <div style={{
-                                                    border: '1px solid #e0e0e0',
-                                                    borderRadius: '8px',
-                                                    padding: '1.5rem',
-                                                    marginBottom: '1.5rem',
-                                                    background: '#fafafa'
+                                                    padding: '8px 16px',
+                                                    borderRadius: '20px',
+                                                    background: getStatusColor(order.currentStatus?.statusType),
+                                                    color: 'white',
+                                                    fontWeight: 600,
+                                                    fontSize: '0.9rem'
                                                 }}>
-                                                    <div style={{
-                                                        display: 'flex',
-                                                        justifyContent: 'space-between',
-                                                        alignItems: 'center',
-                                                        marginBottom: '1rem'
-                                                    }}>
-                                                        <h4 style={{
-                                                            color: '#37474f',
-                                                            margin: 0,
-                                                            fontSize: '1.1rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '8px'
-                                                        }}>
-                                                            <span>🏗️</span> Текущий этап: {order.currentStage.stageName}
-                                                        </h4>
-                                                        <div style={{
-                                                            padding: '6px 12px',
-                                                            borderRadius: '20px',
-                                                            background: getStageColor(order.currentStage.status),
-                                                            color: 'white',
-                                                            fontWeight: 600,
-                                                            fontSize: '0.8rem'
-                                                        }}>
-                                                            {getStageStatusText(order.currentStage.status)}
-                                                        </div>
-                                                    </div>
-
-                                                    <p style={{
-                                                        color: '#666',
-                                                        margin: '0 0 1rem 0',
-                                                        fontSize: '0.9rem'
-                                                    }}>
-                                                        {order.currentStage.description || 'Описание этапа отсутствует'}
-                                                    </p>
-
-                                                    {/* Прогресс этапа */}
-                                                    <div style={{ marginBottom: '1rem' }}>
-                                                        <div style={{
-                                                            display: 'flex',
-                                                            justifyContent: 'space-between',
-                                                            marginBottom: '0.5rem',
-                                                            fontSize: '0.9rem',
-                                                            color: '#666'
-                                                        }}>
-                                                            <span>Прогресс выполнения:</span>
-                                                            <span>{progress}%</span>
-                                                        </div>
-                                                        <div style={{
-                                                            width: '100%',
-                                                            height: '8px',
-                                                            background: '#e0e0e0',
-                                                            borderRadius: '4px',
-                                                            overflow: 'hidden'
-                                                        }}>
-                                                            <div style={{
-                                                                width: `${progress}%`,
-                                                                height: '100%',
-                                                                background: order.currentStage.status === 'completed' ? '#4CAF50' :
-                                                                    order.currentStage.status === 'delayed' ? '#F44336' : '#2196F3',
-                                                                borderRadius: '4px',
-                                                                transition: 'width 0.5s ease'
-                                                            }}></div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Даты этапа */}
-                                                    <div style={{
-                                                        display: 'grid',
-                                                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                                                        gap: '1rem',
-                                                        fontSize: '0.85rem',
-                                                        color: '#666'
-                                                    }}>
-                                                        <div>
-                                                            <span style={{ fontWeight: 600 }}>Начало:</span> {formatDate(order.currentStage.startDate) || 'Не указано'}
-                                                        </div>
-                                                        <div>
-                                                            <span style={{ fontWeight: 600 }}>Планируемое окончание:</span> {formatDate(order.currentStage.plannedEndDate) || 'Не указано'}
-                                                        </div>
-                                                        {order.currentStage.actualEndDate && (
-                                                            <div>
-                                                                <span style={{ fontWeight: 600 }}>Фактическое окончание:</span> {formatDate(order.currentStage.actualEndDate)}
-                                                            </div>
-                                                        )}
-                                                        {order.currentStage.createdBy && (
-                                                            <div>
-                                                                <span style={{ fontWeight: 600 }}>Ответственный:</span> {order.currentStage.createdBy.fullName} ({order.currentStage.createdBy.role})
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    {getStatusText(order.currentStatus?.statusType)}
                                                 </div>
-                                            )}
-
-                                            {/* Кнопки действий */}
-                                            <div style={{
-                                                display: 'flex',
-                                                gap: '1rem',
-                                                paddingTop: '1.5rem',
-                                                borderTop: '1px solid #f0f0f0'
-                                            }}>
-                                                <Link
-                                                    to={`/template/${order.projectInfo?.id}`}
-                                                    style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '8px',
-                                                        padding: '10px 16px',
-                                                        borderRadius: '8px',
-                                                        border: '1px solid #e0e0e0',
-                                                        background: 'transparent',
-                                                        color: '#2196F3',
-                                                        textDecoration: 'none',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.3s ease'
-                                                    }}
-                                                    onMouseOver={(e) => {
-                                                        e.target.style.background = '#e3f2fd';
-                                                        e.target.style.borderColor = '#2196F3';
-                                                    }}
-                                                    onMouseOut={(e) => {
-                                                        e.target.style.background = 'transparent';
-                                                        e.target.style.borderColor = '#e0e0e0';
-                                                    }}
-                                                >
-                                                    <span>👁️</span> Посмотреть проект
-                                                </Link>
-                                                <button
-                                                    style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '8px',
-                                                        padding: '10px 16px',
-                                                        borderRadius: '8px',
-                                                        border: '1px solid #4CAF50',
-                                                        background: 'transparent',
-                                                        color: '#4CAF50',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.3s ease'
-                                                    }}
-                                                    onMouseOver={(e) => {
-                                                        e.target.style.background = '#E8F5E9';
-                                                    }}
-                                                    onMouseOut={(e) => {
-                                                        e.target.style.background = 'transparent';
-                                                    }}
-                                                >
-                                                    <span>💬</span> Связаться с менеджером
-                                                </button>
+                                                <span style={{
+                                                    transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                    transition: 'transform 0.3s ease',
+                                                    fontSize: '1.5rem'
+                                                }}>
+                                                    ▼
+                                                </span>
                                             </div>
                                         </div>
+
+                                        {/* Основное содержимое заказа */}
+                                        {isExpanded && (
+                                            <div style={{ padding: '1.5rem' }}>
+                                                {/* Вкладки для разных разделов */}
+                                                <div style={{
+                                                    display: 'flex',
+                                                    gap: '0.5rem',
+                                                    marginBottom: '1.5rem',
+                                                    borderBottom: '1px solid #e0e0e0',
+                                                    paddingBottom: '0.5rem'
+                                                }}>
+                                                    <button
+                                                        onClick={() => setActiveTab('orders')}
+                                                        style={{
+                                                            padding: '8px 16px',
+                                                            background: activeTab === 'orders' ? '#e3f2fd' : 'transparent',
+                                                            border: 'none',
+                                                            color: activeTab === 'orders' ? '#2196F3' : '#666',
+                                                            cursor: 'pointer',
+                                                            borderRadius: '6px',
+                                                            fontWeight: activeTab === 'orders' ? '600' : '400'
+                                                        }}
+                                                    >
+                                                        📋 Детали заказа
+                                                    </button>
+                                                    {orderStatus === 'documentation' && (
+                                                        <button
+                                                            onClick={() => setActiveTab('documents')}
+                                                            style={{
+                                                                padding: '8px 16px',
+                                                                background: activeTab === 'documents' ? '#f3e5f5' : 'transparent',
+                                                                border: 'none',
+                                                                color: activeTab === 'documents' ? '#9C27B0' : '#666',
+                                                                cursor: 'pointer',
+                                                                borderRadius: '6px',
+                                                                fontWeight: activeTab === 'documents' ? '600' : '400'
+                                                            }}
+                                                        >
+                                                            📄 Документы
+                                                        </button>
+                                                    )}
+                                                    {orderStatus === 'construction' && (
+                                                        <button
+                                                            onClick={() => setActiveTab('construction')}
+                                                            style={{
+                                                                padding: '8px 16px',
+                                                                background: activeTab === 'construction' ? '#fff3e0' : 'transparent',
+                                                                border: 'none',
+                                                                color: activeTab === 'construction' ? '#FF9800' : '#666',
+                                                                cursor: 'pointer',
+                                                                borderRadius: '6px',
+                                                                fontWeight: activeTab === 'construction' ? '600' : '400'
+                                                            }}
+                                                        >
+                                                            🏗️ Ход строительства
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                {/* Содержимое активной вкладки */}
+                                                {activeTab === 'orders' ? (
+                                                    <>
+                                                        {/* Общая информация о заказе */}
+                                                        <div style={{
+                                                            display: 'grid',
+                                                            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                                                            gap: '1.5rem',
+                                                            marginBottom: '1.5rem'
+                                                        }}>
+                                                            {/* Информация о проекте */}
+                                                            <div>
+                                                                <h4 style={{
+                                                                    color: '#37474f',
+                                                                    margin: '0 0 0.5rem 0',
+                                                                    fontSize: '1rem',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '8px'
+                                                                }}>
+                                                                    <span>🏠</span> Проект
+                                                                </h4>
+                                                                <p style={{
+                                                                    color: '#546e7a',
+                                                                    margin: '0 0 0.25rem 0',
+                                                                    fontSize: '1.1rem',
+                                                                    fontWeight: 500
+                                                                }}>
+                                                                    {order.projectInfo?.title || 'Не указан'}
+                                                                </p>
+                                                                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: '#666' }}>
+                                                                    <span>Площадь: {order.projectInfo?.totalArea || '—'} м²</span>
+                                                                    <span>Цена: {formatPrice(order.projectInfo?.basePrice)}</span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Статус заказа */}
+                                                            <div>
+                                                                <h4 style={{
+                                                                    color: '#37474f',
+                                                                    margin: '0 0 0.5rem 0',
+                                                                    fontSize: '1rem',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '8px'
+                                                                }}>
+                                                                    <span>📊</span> Статус заказа
+                                                                </h4>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                    <div style={{
+                                                                        width: '10px',
+                                                                        height: '10px',
+                                                                        borderRadius: '50%',
+                                                                        background: getStatusColor(order.currentStatus?.statusType)
+                                                                    }}></div>
+                                                                    <span style={{
+                                                                        color: '#546e7a',
+                                                                        fontSize: '1rem'
+                                                                    }}>
+                                                                        {getStatusText(order.currentStatus?.statusType)}
+                                                                    </span>
+                                                                </div>
+                                                                {order.currentStatus?.comment && (
+                                                                    <p style={{
+                                                                        fontSize: '0.9rem',
+                                                                        color: '#666',
+                                                                        margin: '0.5rem 0 0 0',
+                                                                        fontStyle: 'italic'
+                                                                    }}>
+                                                                        Комментарий: {order.currentStatus.comment}
+                                                                    </p>
+                                                                )}
+                                                                {order.currentStatus?.changedBy && (
+                                                                    <p style={{
+                                                                        fontSize: '0.85rem',
+                                                                        color: '#999',
+                                                                        margin: '0.25rem 0 0 0'
+                                                                    }}>
+                                                                        Изменен: {order.currentStatus.changedBy.fullName} ({order.currentStatus.changedBy.role})
+                                                                    </p>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Информация о клиенте */}
+                                                            {order.clientInfo && (
+                                                                <div>
+                                                                    <h4 style={{
+                                                                        color: '#37474f',
+                                                                        margin: '0 0 0.5rem 0',
+                                                                        fontSize: '1rem',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '8px'
+                                                                    }}>
+                                                                        <span>👤</span> Клиент
+                                                                    </h4>
+                                                                    <p style={{ color: '#546e7a', margin: 0 }}>
+                                                                        {order.clientInfo.fullName || 'Не указано'}
+                                                                    </p>
+                                                                    {order.clientInfo.email && (
+                                                                        <p style={{
+                                                                            fontSize: '0.9rem',
+                                                                            color: '#666',
+                                                                            margin: '0.25rem 0 0 0'
+                                                                        }}>
+                                                                            {order.clientInfo.email}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Текущий этап строительства */}
+                                                        {order.currentStage && orderStatus !== 'new' && orderStatus !== 'documentation' && (
+                                                            <div style={{
+                                                                border: '1px solid #e0e0e0',
+                                                                borderRadius: '8px',
+                                                                padding: '1.5rem',
+                                                                marginBottom: '1.5rem',
+                                                                background: '#fafafa'
+                                                            }}>
+                                                                <div style={{
+                                                                    display: 'flex',
+                                                                    justifyContent: 'space-between',
+                                                                    alignItems: 'center',
+                                                                    marginBottom: '1rem'
+                                                                }}>
+                                                                    <h4 style={{
+                                                                        color: '#37474f',
+                                                                        margin: 0,
+                                                                        fontSize: '1.1rem',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '8px'
+                                                                    }}>
+                                                                        <span>🏗️</span> Текущий этап: {order.currentStage.stageName}
+                                                                    </h4>
+                                                                    <div style={{
+                                                                        padding: '6px 12px',
+                                                                        borderRadius: '20px',
+                                                                        background: getStageColor(order.currentStage.status),
+                                                                        color: 'white',
+                                                                        fontWeight: 600,
+                                                                        fontSize: '0.8rem'
+                                                                    }}>
+                                                                        {getStageStatusText(order.currentStage.status)}
+                                                                    </div>
+                                                                </div>
+
+                                                                <p style={{
+                                                                    color: '#666',
+                                                                    margin: '0 0 1rem 0',
+                                                                    fontSize: '0.9rem'
+                                                                }}>
+                                                                    {order.currentStage.description || 'Описание этапа отсутствует'}
+                                                                </p>
+
+                                                                {/* Прогресс этапа */}
+                                                                <div style={{ marginBottom: '1rem' }}>
+                                                                    <div style={{
+                                                                        display: 'flex',
+                                                                        justifyContent: 'space-between',
+                                                                        marginBottom: '0.5rem',
+                                                                        fontSize: '0.9rem',
+                                                                        color: '#666'
+                                                                    }}>
+                                                                        <span>Прогресс выполнения:</span>
+                                                                        <span>{progress}%</span>
+                                                                    </div>
+                                                                    <div style={{
+                                                                        width: '100%',
+                                                                        height: '8px',
+                                                                        background: '#e0e0e0',
+                                                                        borderRadius: '4px',
+                                                                        overflow: 'hidden'
+                                                                    }}>
+                                                                        <div style={{
+                                                                            width: `${progress}%`,
+                                                                            height: '100%',
+                                                                            background: order.currentStage.status === 'completed' ? '#4CAF50' :
+                                                                                order.currentStage.status === 'delayed' ? '#F44336' : '#2196F3',
+                                                                            borderRadius: '4px',
+                                                                            transition: 'width 0.5s ease'
+                                                                        }}></div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Даты этапа */}
+                                                                <div style={{
+                                                                    display: 'grid',
+                                                                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                                                                    gap: '1rem',
+                                                                    fontSize: '0.85rem',
+                                                                    color: '#666'
+                                                                }}>
+                                                                    <div>
+                                                                        <span style={{ fontWeight: 600 }}>Начало:</span> {formatDate(order.currentStage.startDate) || 'Не указано'}
+                                                                    </div>
+                                                                    <div>
+                                                                        <span style={{ fontWeight: 600 }}>Планируемое окончание:</span> {formatDate(order.currentStage.plannedEndDate) || 'Не указано'}
+                                                                    </div>
+                                                                    {order.currentStage.actualEndDate && (
+                                                                        <div>
+                                                                            <span style={{ fontWeight: 600 }}>Фактическое окончание:</span> {formatDate(order.currentStage.actualEndDate)}
+                                                                        </div>
+                                                                    )}
+                                                                    {order.currentStage.createdBy && (
+                                                                        <div>
+                                                                            <span style={{ fontWeight: 600 }}>Ответственный:</span> {order.currentStage.createdBy.fullName} ({order.currentStage.createdBy.role})
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Кнопки действий */}
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            gap: '1rem',
+                                                            paddingTop: '1.5rem',
+                                                            borderTop: '1px solid #f0f0f0'
+                                                        }}>
+                                                            <button
+                                                                onClick={() => handleOrderAction(order, 'view')}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '8px',
+                                                                    padding: '10px 16px',
+                                                                    borderRadius: '8px',
+                                                                    border: '1px solid #e0e0e0',
+                                                                    background: 'transparent',
+                                                                    color: '#2196F3',
+                                                                    cursor: 'pointer',
+                                                                    transition: 'all 0.3s ease'
+                                                                }}
+                                                                onMouseOver={(e) => {
+                                                                    e.target.style.background = '#e3f2fd';
+                                                                    e.target.style.borderColor = '#2196F3';
+                                                                }}
+                                                                onMouseOut={(e) => {
+                                                                    e.target.style.background = 'transparent';
+                                                                    e.target.style.borderColor = '#e0e0e0';
+                                                                }}
+                                                            >
+                                                                <span>👁️</span> Посмотреть проект
+                                                            </button>
+                                                            
+                                                            {orderStatus === 'documentation' && (
+                                                                <button
+                                                                    onClick={() => handleOrderAction(order, 'documents')}
+                                                                    style={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '8px',
+                                                                        padding: '10px 16px',
+                                                                        borderRadius: '8px',
+                                                                        border: '1px solid #9C27B0',
+                                                                        background: 'transparent',
+                                                                        color: '#9C27B0',
+                                                                        cursor: 'pointer',
+                                                                        transition: 'all 0.3s ease'
+                                                                    }}
+                                                                    onMouseOver={(e) => {
+                                                                        e.target.style.background = '#f3e5f5';
+                                                                        e.target.style.borderColor = '#9C27B0';
+                                                                    }}
+                                                                    onMouseOut={(e) => {
+                                                                        e.target.style.background = 'transparent';
+                                                                        e.target.style.borderColor = '#9C27B0';
+                                                                    }}
+                                                                >
+                                                                    <span>📄</span> Работа с документами
+                                                                </button>
+                                                            )}
+                                                            
+                                                            {orderStatus === 'construction' && (
+                                                                <button
+                                                                    onClick={() => handleOrderAction(order, 'construction')}
+                                                                    style={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '8px',
+                                                                        padding: '10px 16px',
+                                                                        borderRadius: '8px',
+                                                                        border: '1px solid #FF9800',
+                                                                        background: 'transparent',
+                                                                        color: '#FF9800',
+                                                                        cursor: 'pointer',
+                                                                        transition: 'all 0.3s ease'
+                                                                    }}
+                                                                    onMouseOver={(e) => {
+                                                                        e.target.style.background = '#fff3e0';
+                                                                        e.target.style.borderColor = '#FF9800';
+                                                                    }}
+                                                                    onMouseOut={(e) => {
+                                                                        e.target.style.background = 'transparent';
+                                                                        e.target.style.borderColor = '#FF9800';
+                                                                    }}
+                                                                >
+                                                                    <span>🏗️</span> Ход строительства
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                ) : activeTab === 'documents' && orderStatus === 'documentation' ? (
+                                                    <OrderDocuments token={token} orderId={order.id} />
+                                                ) : activeTab === 'construction' && orderStatus === 'construction' ? (
+                                                    <OrderConstruction token={token} orderId={order.id} />
+                                                ) : null}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}

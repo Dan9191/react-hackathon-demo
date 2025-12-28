@@ -1355,7 +1355,7 @@ export default function AdminDashboard({ token }) {
                                                         </h3>
                                                         <p style={{ margin: 0, color: '#666', fontSize: '0.9rem' }}>
                                                             Клиент: <strong>
-                                                                {order.clientName ||
+                                                                {order.clientInfo.fullName||
                                                                     order.client?.fullName ||
                                                                     (order.client?.firstName && order.client?.lastName ?
                                                                         `${order.client.firstName} ${order.client.lastName}` :
@@ -1412,7 +1412,7 @@ export default function AdminDashboard({ token }) {
                                                                     fontSize: '0.9rem',
                                                                     color: '#1976D2'
                                                                 }}>
-                                                                    {order.currentStage.name}
+                                                                    {order.currentStage.stageName}
                                                                 </div>
                                                             </div>
                                                         )}
