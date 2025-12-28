@@ -11,6 +11,7 @@ import AdminDashboard from './components/AdminDashboard';
 import UserOrdersAdmin from './components/UserOrdersAdmin';
 import CreateApplication from './components/CreateApplication';
 import OrderDetailAdmin from './components/OrderDetailAdmin';
+import OrderManagement from './components/OrderManagement';
 
 export default function App() {
     const [token, setToken] = useState(localStorage.getItem('access_token'));
@@ -94,6 +95,10 @@ export default function App() {
                         <Route
                             path="/admin"
                             element={<AdminDashboard token={token} />}
+                        />
+                        <Route
+                            path="/admin/orders/:orderId"
+                            element={<OrderManagement token={token} />}
                         />
                         <Route
                             path="/admin/orders/:userId"
