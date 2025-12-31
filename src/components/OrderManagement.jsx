@@ -36,7 +36,7 @@ export default function OrderManagement({ token }) {
         fileName: ''
     });
     const [newStage, setNewStage] = useState({
-        stageType: 'foundation',
+        stageType: 'SITE_PREPARATION',
         description: '',
         plannedEndDate: '',
         progress: 0
@@ -1725,16 +1725,23 @@ export default function OrderManagement({ token }) {
                                     borderRadius: '6px'
                                 }}
                             >
-                                <option value="foundation">Фундамент</option>
-                                <option value="walls">Стены</option>
-                                <option value="roof">Крыша</option>
-                                <option value="finishing">Отделка</option>
-                                <option value="electrical">Электрика</option>
-                                <option value="plumbing">Сантехника</option>
-                                <option value="windows">Окна и двери</option>
-                                <option value="flooring">Напольные покрытия</option>
-                                <option value="painting">Покраска</option>
-                                <option value="other">Другое</option>
+                                <option value="SITE_PREPARATION">Подготовка участка</option>
+                                <option value="EXCAVATION">Земляные работы</option>
+                                <option value="FOUNDATION">Заливка фундамента</option>
+                                <option value="WALLS">Возведение стен</option>
+                                <option value="FLOOR_SLABS">Устройство межэтажных перекрытий</option>
+                                <option value="ROOF">Монтаж кровли</option>
+                                <option value="WINDOWS_DOORS">Установка окон и дверей</option>
+                                <option value="EXTERIOR_WALLS">Наружная отделка фасада</option>
+                                <option value="EXTERIOR_INSULATION">Утепление наружных стен</option>
+                                <option value="ELECTRICAL">Электромонтажные работы</option>
+                                <option value="PLUMBING">Сантехнические работы</option>
+                                <option value="HEATING_VENTILATION">Монтаж отопления и вентиляции</option>
+                                <option value="WALL_PREPARATION">Выравнивание стен и потолков</option>
+                                <option value="FLOOR_COVERING">Укладка напольных покрытий</option>
+                                <option value="PAINTING_DECORATING">Покраска и декорирование</option>
+                                <option value="FINISHING">Финишная отделка</option>
+                                <option value="LANDSCAPING">Благоустройство территории</option>
                             </select>
                         </div>
 
