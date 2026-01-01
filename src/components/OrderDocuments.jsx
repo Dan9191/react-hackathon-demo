@@ -32,13 +32,40 @@ export default function OrderDocuments({ token, orderId }) {
             }
 
             const data = await response.json();
-            setDocuments(Array.isArray(data) ? data : []);
+
+            // Добавила фильтрацию - оставляем только последнюю версию каждого документа
+            const latestDocuments = getLatestDocumentVersions(data);
+
+            setDocuments(latestDocuments);
         } catch (err) {
             console.error('Ошибка загрузки документов:', err);
             setError('Не удалось загрузить документы');
         } finally {
             setLoading(false);
         }
+    };
+
+    const getLatestDocumentVersions = (documents) => {
+        if (!documents || documents.length === 0) return [];
+
+        // Сортируем по дате создания (самые новые первые)
+        const sortedByDate = [...documents].sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA; // По убыванию (новые вперед)
+        });
+
+        // Берем первую (самую новую) версию каждого документа
+        const latestVersions = {};
+
+        sortedByDate.forEach(doc => {
+            const docKey = doc.title || `doc_${doc.type}`;
+            if (!latestVersions[docKey]) {
+                latestVersions[docKey] = doc;
+            }
+        });
+
+        return Object.values(latestVersions);
     };
 
     const handleSignDocument = async (documentId) => {
@@ -50,6 +77,10 @@ export default function OrderDocuments({ token, orderId }) {
         setSigningId(documentId);
         try {
             const { API_BASE_URL } = getConfig();
+
+            // добавила кодирование подписи в base64
+            const base64Signature = btoa(encodeURIComponent(signature.trim()));
+
             const response = await fetch(
                 `${API_BASE_URL}/api/orders/${orderId}/documents/${documentId}/sign`,
                 {
@@ -58,7 +89,7 @@ export default function OrderDocuments({ token, orderId }) {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ signature: signature.trim() })
+                    body: JSON.stringify({ signature: base64Signature })
                 }
             );
 
@@ -105,7 +136,7 @@ export default function OrderDocuments({ token, orderId }) {
     const getDocumentStatusText = (status) => {
         const statusMap = {
             'new': 'Новый',
-            'pending_signature': 'Ожидает подписи',
+            'pending': 'Ожидает подписи',
             'signed': 'Подписан',
             'rejected': 'Отклонен',
             'expired': 'Просрочен'
@@ -117,7 +148,7 @@ export default function OrderDocuments({ token, orderId }) {
         const statusLower = status?.toLowerCase();
         switch (statusLower) {
             case 'signed': return '#4CAF50';
-            case 'pending_signature': return '#FF9800';
+            case 'pending': return '#FF9800';
             case 'rejected': return '#F44336';
             case 'expired': return '#757575';
             default: return '#9E9E9E';
@@ -310,7 +341,7 @@ export default function OrderDocuments({ token, orderId }) {
                                     Посмотреть
                                 </button>
 
-                                {doc.status?.toLowerCase() === 'pending_signature' && (
+                                {doc.status?.toLowerCase() === 'pending' && (
                                     <button
                                         onClick={() => handleSignDocument(doc.id)}
                                         disabled={signingId === doc.id || !signature.trim()}
