@@ -185,17 +185,24 @@ export default function OrderManagement({ token }) {
         setLoading(true);
         setError('');
         try {
+
+            // Загружаю информацию о заказе - так как камеры доступны только на этапе строительства
+            const orderData = await loadOrderInfo();
+
+            // Получаю текущий статус - должен быть строительство
+            const currentStatus = orderData?.currentStatus?.statusType?.toLowerCase() || 'new';
+            console.log('Текущий статус заказа:', currentStatus);
+
+            // Загружаю остальные данные параллельно
             await Promise.all([
-                loadOrderInfo(),
                 loadOrderStatuses(),
                 loadOrderDocuments(),
                 loadOrderStages(),
                 loadAvailableStatuses(),
                 loadChatMessages() // Загружаем сообщения чата всегда
             ]);
-            
-            // Загружаем камеры если статус "construction"
-            const currentStatus = order?.currentStatus?.statusType?.toLowerCase() || 'new';
+
+            // Загружаю камеры если статус "construction"
             if (currentStatus === 'construction') {
                 await loadCameras();
             }
