@@ -2215,30 +2215,35 @@ export default function OrderManagement({ token }) {
                                     </div>
                                 )}
 
-                                {camera.ip && camera.port && (
+                                {camera.streamUrl && (
                                     <div style={{ marginTop: '1rem' }}>
-                                        <h4 style={{ marginBottom: '0.5rem' }}>Предпросмотр потока</h4>
+                                        <h4 style={{ marginBottom: '0.5rem' }}>📹 Видеотрансляция</h4>
                                         <div style={{
                                             width: '100%',
-                                            height: '300px',
+                                            height: '400px',
                                             background: '#000',
                                             borderRadius: '6px',
-                                            overflow: 'hidden',
-                                            position: 'relative'
+                                            overflow: 'hidden'
                                         }}>
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: '50%',
-                                                left: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                                color: '#fff',
-                                                textAlign: 'center'
-                                            }}>
-                                                📹 Видеопоток с камеры
-                                                <div style={{ fontSize: '0.9rem', marginTop: '10px', color: '#ccc' }}>
-                                                    IP: {camera.ip}:{camera.port}
-                                                </div>
-                                            </div>
+                                            <iframe
+                                                src={camera.streamUrl}
+                                                style={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    border: 'none'
+                                                }}
+                                                title={`Камера ${camera.name}`}
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                allowFullScreen
+                                            />
+                                        </div>
+                                        <div style={{
+                                            fontSize: '0.8rem',
+                                            color: '#666',
+                                            marginTop: '0.5rem',
+                                            textAlign: 'center'
+                                        }}>
+                                            🔴 Трансляция в реальном времени
                                         </div>
                                     </div>
                                 )}
