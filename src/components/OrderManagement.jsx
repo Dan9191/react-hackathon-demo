@@ -737,6 +737,31 @@ export default function OrderManagement({ token }) {
         }
     };
 
+    const handleDeleteStage = async (stageId) => {
+        if (!window.confirm('Вы уверены, что хотите удалить этот этап?')) return;
+
+        try {
+            const { API_BASE_URL } = getConfig();
+            const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/stages/${stageId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Ошибка ${response.status}: ${errorText}`);
+            }
+
+            alert('Этап успешно удален!');
+            await loadOrderStages();
+        } catch (err) {
+            console.error('Ошибка удаления этапа:', err);
+            alert('Ошибка: ' + err.message);
+        }
+    };
+
     // Вспомогательные функции
     const getStatusColor = (status) => {
         if (!status) return '#9E9E9E';
@@ -1820,7 +1845,7 @@ export default function OrderManagement({ token }) {
                             fontWeight: 600
                         }}
                     >
-                        🏗️ Добавить этап
+                        Добавить этап
                     </button>
                 </form>
             </div>
@@ -1903,13 +1928,14 @@ export default function OrderManagement({ token }) {
 
                                 <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #dee2e6' }}>
                                     <h4 style={{ marginBottom: '0.5rem' }}>Обновить этап</h4>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '1rem', alignItems: 'flex-end' }}>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Статус</label>
+                                            <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.25rem' }}>Статус</div>
                                             <select
                                                 value={updateStage.status}
                                                 onChange={(e) => setUpdateStage({ ...updateStage, status: e.target.value })}
-                                                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.9rem' }}
                                             >
                                                 <option value="not_started">Не начат</option>
                                                 <option value="in_progress">В работе</option>
@@ -1918,28 +1944,30 @@ export default function OrderManagement({ token }) {
                                         </div>
 
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Прогресс (%)</label>
+                                            <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.25rem' }}>Прогресс (%)</div>
                                             <input
                                                 type="number"
                                                 min="0"
                                                 max="100"
                                                 value={updateStage.progress}
                                                 onChange={(e) => setUpdateStage({ ...updateStage, progress: parseInt(e.target.value) })}
-                                                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.9rem' }}
                                             />
                                         </div>
 
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Комментарий</label>
+                                            <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.25rem' }}>Комментарий</div>
                                             <input
                                                 type="text"
                                                 value={updateStage.comment}
                                                 onChange={(e) => setUpdateStage({ ...updateStage, comment: e.target.value })}
                                                 placeholder="Комментарий"
-                                                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.9rem' }}
                                             />
                                         </div>
+                                    </div>
 
+                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                                         <button
                                             onClick={() => handleUpdateStage(stage.id)}
                                             style={{
@@ -1949,10 +1977,25 @@ export default function OrderManagement({ token }) {
                                                 border: 'none',
                                                 borderRadius: '4px',
                                                 cursor: 'pointer',
-                                                height: '42px'
+                                                fontSize: '0.9rem'
                                             }}
                                         >
                                             Обновить
+                                        </button>
+
+                                        <button
+                                            onClick={() => handleDeleteStage(stage.id)}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: '#F44336',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                fontSize: '0.9rem'
+                                            }}
+                                        >
+                                            Удалить
                                         </button>
                                     </div>
                                 </div>
