@@ -41,12 +41,8 @@ export default function OrderManagement({ token }) {
         plannedEndDate: '',
         progress: 0
     });
-    const [updateStage, setUpdateStage] = useState({
-        status: 'in_progress',
-        progress: 0,
-        comment: '',
-        actualEndDate: ''
-    });
+    const [updateStages, setUpdateStages] = useState({});
+
     const [editAddress, setEditAddress] = useState({
         address: '',
         isEditing: false
@@ -705,8 +701,18 @@ export default function OrderManagement({ token }) {
     const handleUpdateStage = async (stageId) => {
         if (!window.confirm('Обновить этап строительства?')) return;
 
+        const stageUpdateData = getStageUpdateData(stageId);
+
         try {
             const { API_BASE_URL } = getConfig();
+
+            // Автоматически устанавливаем прогресс в зависимости от статуса
+            const progressToSend = stageUpdateData.status === 'completed'
+                ? 100
+                : stageUpdateData.status === 'not_started'
+                    ? 0
+                    : stageUpdateData.progress;
+
             const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/stages/${stageId}`, {
                 method: 'PATCH',
                 headers: {
@@ -714,22 +720,20 @@ export default function OrderManagement({ token }) {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    ...updateStage,
-                    actualEndDate: updateStage.actualEndDate || null
+                    status: stageUpdateData.status,
+                    progress: progressToSend,
+                    comment: stageUpdateData.comment,
+                    actualEndDate: stageUpdateData.actualEndDate || null
                 })
             });
 
             if (!response.ok) {
-                throw new Error(`Ошибка ${response.status}: ${await response.text()}`);
+                const errorText = await response.text();
+                throw new Error(`Ошибка ${response.status}: ${errorText}`);
             }
 
             alert('Этап успешно обновлен!');
-            setUpdateStage({
-                status: 'in_progress',
-                progress: 0,
-                comment: '',
-                actualEndDate: ''
-            });
+            resetStageUpdateData(stageId);
             await loadOrderStages();
         } catch (err) {
             console.error('Ошибка обновления этапа:', err);
@@ -749,13 +753,14 @@ export default function OrderManagement({ token }) {
                 }
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Ошибка ${response.status}: ${errorText}`);
+            if (response.ok) {
+                resetStageUpdateData(stageId);
+                await loadOrderStages();
+            } else {
+                throw new Error(`Ошибка ${response.status}: ${await response.text()}`);
             }
 
             alert('Этап успешно удален!');
-            await loadOrderStages();
         } catch (err) {
             console.error('Ошибка удаления этапа:', err);
             alert('Ошибка: ' + err.message);
@@ -775,6 +780,33 @@ export default function OrderManagement({ token }) {
             case 'closed': return '#607D8B';
             default: return '#9E9E9E';
         }
+    };
+
+    // Функция для получения состояния обновления конкретного этапа
+    const getStageUpdateData = (stageId) => {
+        return updateStages[stageId] || {
+            status: 'in_progress',
+            progress: 0,
+            comment: '',
+            actualEndDate: ''
+        };
+    };
+
+// Функция для обновления состояния конкретного этапа
+    const setStageUpdateData = (stageId, data) => {
+        setUpdateStages(prev => ({
+            ...prev,
+            [stageId]: data
+        }));
+    };
+
+// Функция для сброса состояния конкретного этапа
+    const resetStageUpdateData = (stageId) => {
+        setUpdateStages(prev => {
+            const newState = { ...prev };
+            delete newState[stageId];
+            return newState;
+        });
     };
 
     const getStatusText = (status) => {
@@ -1039,7 +1071,7 @@ export default function OrderManagement({ token }) {
                                 fontSize: '0.9rem'
                             }}
                         >
-                            ✏️ Изменить адрес
+                            Изменить адрес
                         </button>
                     </div>
 
@@ -1188,7 +1220,7 @@ export default function OrderManagement({ token }) {
                                 fontSize: '0.85rem'
                             }}
                         >
-                            🔄 Обновить
+                            Обновить
                         </button>
                     </div>
                 </div>
@@ -1384,7 +1416,7 @@ export default function OrderManagement({ token }) {
                 boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                 marginBottom: '2rem'
             }}>
-                <h2 style={{ color: '#1a237e', marginBottom: '1.5rem' }}>📊 Изменить статус заказа</h2>
+                <h2 style={{ color: '#1a237e', marginBottom: '1.5rem' }}>Изменить статус заказа</h2>
 
                 <div style={{
                     background: '#e8f5e9',
@@ -1457,7 +1489,7 @@ export default function OrderManagement({ token }) {
                             fontSize: '1rem'
                         }}
                     >
-                        📊 Изменить статус
+                        Изменить статус
                     </button>
                 </form>
             </div>
@@ -1468,7 +1500,7 @@ export default function OrderManagement({ token }) {
                 padding: '2rem',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
             }}>
-                <h2 style={{ color: '#1a237e', marginBottom: '1.5rem' }}>📋 История статусов</h2>
+                <h2 style={{ color: '#1a237e', marginBottom: '1.5rem' }}>История статусов</h2>
 
                 {statuses.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '2rem', color: '#999' }}>
@@ -1797,7 +1829,7 @@ export default function OrderManagement({ token }) {
 
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                            Описание работ
+                            Описание работ <span style={{ color: '#999', fontSize: '0.9rem', fontWeight: 'normal' }}>(необязательно)</span>
                         </label>
                         <textarea
                             value={newStage.description}
@@ -1810,7 +1842,6 @@ export default function OrderManagement({ token }) {
                                 minHeight: '100px'
                             }}
                             placeholder="Опишите работы по этапу..."
-                            required
                         />
                     </div>
 
@@ -1828,8 +1859,8 @@ export default function OrderManagement({ token }) {
                                 style={{ flex: 1 }}
                             />
                             <span style={{ minWidth: '50px', textAlign: 'center', fontWeight: 'bold' }}>
-                                {newStage.progress}%
-                            </span>
+                            {newStage.progress}%
+                        </span>
                         </div>
                     </div>
 
@@ -1864,22 +1895,26 @@ export default function OrderManagement({ token }) {
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {stages.map(stage => (
-                            <div key={stage.id || Math.random()} style={{
-                                padding: '1.5rem',
-                                border: '1px solid #e0e0e0',
-                                borderRadius: '8px',
-                                background: '#f8f9fa'
-                            }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <div>
-                                        <h3 style={{ margin: 0, color: '#1a237e' }}>
-                                            {stage.stageName || stage.stageType || 'Без названия'}
-                                        </h3>
-                                        <p style={{ margin: '5px 0', color: '#666' }}>
-                                            {stage.description || 'Без описания'}
-                                        </p>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '10px' }}>
+                        {stages.map(stage => {
+                            // Определяем stageUpdateData внутри map
+                            const stageUpdateData = getStageUpdateData(stage.id);
+
+                            return (
+                                <div key={stage.id || Math.random()} style={{
+                                    padding: '1.5rem',
+                                    border: '1px solid #e0e0e0',
+                                    borderRadius: '8px',
+                                    background: '#f8f9fa'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div>
+                                            <h3 style={{ margin: 0, color: '#1a237e' }}>
+                                                {stage.stageName || stage.stageType || 'Без названия'}
+                                            </h3>
+                                            <p style={{ margin: '5px 0', color: '#666' }}>
+                                                {stage.description || 'Без описания'}
+                                            </p>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '10px' }}>
                                             <span style={{
                                                 padding: '4px 8px',
                                                 background: getStageStatusColor(stage.status),
@@ -1889,118 +1924,157 @@ export default function OrderManagement({ token }) {
                                             }}>
                                                 {getStageStatusText(stage.status)}
                                             </span>
-                                            <span style={{ color: '#666' }}>
+                                                <span style={{ color: '#666' }}>
                                                 Прогресс: <strong>{stage.progress || 0}%</strong>
                                             </span>
-                                            <div style={{
-                                                width: '100px',
-                                                height: '8px',
-                                                background: '#e0e0e0',
-                                                borderRadius: '4px',
-                                                overflow: 'hidden'
-                                            }}>
                                                 <div style={{
-                                                    width: `${stage.progress || 0}%`,
-                                                    height: '100%',
-                                                    background: getStageStatusColor(stage.status),
-                                                    transition: 'width 0.3s'
-                                                }}></div>
+                                                    width: '100px',
+                                                    height: '8px',
+                                                    background: '#e0e0e0',
+                                                    borderRadius: '4px',
+                                                    overflow: 'hidden'
+                                                }}>
+                                                    <div style={{
+                                                        width: `${stage.progress || 0}%`,
+                                                        height: '100%',
+                                                        background: getStageStatusColor(stage.status),
+                                                        transition: 'width 0.3s'
+                                                    }}></div>
+                                                </div>
                                             </div>
+                                        </div>
+
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>
+                                                Начало: {formatDate(stage.startDate)}
+                                            </div>
+                                            {stage.plannedEndDate && (
+                                                <div style={{ color: '#666', fontSize: '0.9rem', marginTop: '5px' }}>
+                                                    План завершения: {formatDate(stage.plannedEndDate)}
+                                                </div>
+                                            )}
+                                            {stage.actualEndDate && (
+                                                <div style={{ color: '#4CAF50', fontSize: '0.9rem', marginTop: '5px' }}>
+                                                    Факт. завершения: {formatDate(stage.actualEndDate)}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
-                                    <div style={{ textAlign: 'right' }}>
-                                        <div style={{ color: '#666', fontSize: '0.9rem' }}>
-                                            Начало: {formatDate(stage.startDate)}
+                                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #dee2e6' }}>
+                                        <h4 style={{ marginBottom: '0.5rem' }}>Обновить этап</h4>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.25rem' }}>Статус</div>
+                                                <select
+                                                    value={stageUpdateData.status}
+                                                    onChange={(e) => {
+                                                        const newStatus = e.target.value;
+                                                        let newProgress = stageUpdateData.progress;
+                                                        let newActualEndDate = stageUpdateData.actualEndDate;
+
+                                                        // Автоматически обновляем прогресс при изменении статуса
+                                                        if (newStatus === 'completed') {
+                                                            newProgress = 100;
+                                                            // Автоматически устанавливаем дату завершения
+                                                            if (!newActualEndDate) {
+                                                                const now = new Date();
+                                                                // Форматируем дату для input типа datetime-local
+                                                                const year = now.getFullYear();
+                                                                const month = String(now.getMonth() + 1).padStart(2, '0');
+                                                                const day = String(now.getDate()).padStart(2, '0');
+                                                                const hours = String(now.getHours()).padStart(2, '0');
+                                                                const minutes = String(now.getMinutes()).padStart(2, '0');
+                                                                newActualEndDate = `${year}-${month}-${day}T${hours}:${minutes}`;
+                                                            }
+                                                        } else if (newStatus === 'not_started') {
+                                                            newProgress = 0;
+                                                            newActualEndDate = '';
+                                                        } else if (newStatus === 'in_progress' && stageUpdateData.progress === 0) {
+                                                            newProgress = 10;
+                                                        }
+
+                                                        setStageUpdateData(stage.id, {
+                                                            ...stageUpdateData,
+                                                            status: newStatus,
+                                                            progress: newProgress,
+                                                            actualEndDate: newActualEndDate
+                                                        });
+                                                    }}
+                                                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.9rem' }}
+                                                >
+                                                    <option value="not_started">Не начат</option>
+                                                    <option value="in_progress">В работе</option>
+                                                    <option value="completed">Завершен</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.25rem' }}>Прогресс (%)</div>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max="100"
+                                                    value={stageUpdateData.progress}
+                                                    onChange={(e) => setStageUpdateData(stage.id, {
+                                                        ...stageUpdateData,
+                                                        progress: parseInt(e.target.value)
+                                                    })}
+                                                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.9rem' }}
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.25rem' }}>Комментарий</div>
+                                                <input
+                                                    type="text"
+                                                    value={stageUpdateData.comment}
+                                                    onChange={(e) => setStageUpdateData(stage.id, {
+                                                        ...stageUpdateData,
+                                                        comment: e.target.value
+                                                    })}
+                                                    placeholder="Комментарий"
+                                                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.9rem' }}
+                                                />
+                                            </div>
                                         </div>
-                                        {stage.plannedEndDate && (
-                                            <div style={{ color: '#666', fontSize: '0.9rem', marginTop: '5px' }}>
-                                                План завершения: {formatDate(stage.plannedEndDate)}
-                                            </div>
-                                        )}
-                                        {stage.actualEndDate && (
-                                            <div style={{ color: '#4CAF50', fontSize: '0.9rem', marginTop: '5px' }}>
-                                                Факт. завершения: {formatDate(stage.actualEndDate)}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
 
-                                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #dee2e6' }}>
-                                    <h4 style={{ marginBottom: '0.5rem' }}>Обновить этап</h4>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
-                                        <div>
-                                            <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.25rem' }}>Статус</div>
-                                            <select
-                                                value={updateStage.status}
-                                                onChange={(e) => setUpdateStage({ ...updateStage, status: e.target.value })}
-                                                style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.9rem' }}
+                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                            <button
+                                                onClick={() => handleUpdateStage(stage.id)}
+                                                style={{
+                                                    padding: '8px 16px',
+                                                    background: '#2196F3',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.9rem'
+                                                }}
                                             >
-                                                <option value="not_started">Не начат</option>
-                                                <option value="in_progress">В работе</option>
-                                                <option value="completed">Завершен</option>
-                                            </select>
+                                                Обновить
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleDeleteStage(stage.id)}
+                                                style={{
+                                                    padding: '8px 16px',
+                                                    background: '#F44336',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.9rem'
+                                                }}
+                                            >
+                                                Удалить
+                                            </button>
                                         </div>
-
-                                        <div>
-                                            <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.25rem' }}>Прогресс (%)</div>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                max="100"
-                                                value={updateStage.progress}
-                                                onChange={(e) => setUpdateStage({ ...updateStage, progress: parseInt(e.target.value) })}
-                                                style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.9rem' }}
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.25rem' }}>Комментарий</div>
-                                            <input
-                                                type="text"
-                                                value={updateStage.comment}
-                                                onChange={(e) => setUpdateStage({ ...updateStage, comment: e.target.value })}
-                                                placeholder="Комментарий"
-                                                style={{ width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.9rem' }}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                        <button
-                                            onClick={() => handleUpdateStage(stage.id)}
-                                            style={{
-                                                padding: '8px 16px',
-                                                background: '#2196F3',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '0.9rem'
-                                            }}
-                                        >
-                                            Обновить
-                                        </button>
-
-                                        <button
-                                            onClick={() => handleDeleteStage(stage.id)}
-                                            style={{
-                                                padding: '8px 16px',
-                                                background: '#F44336',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '0.9rem'
-                                            }}
-                                        >
-                                            Удалить
-                                        </button>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -2090,7 +2164,7 @@ export default function OrderManagement({ token }) {
                             fontWeight: 600
                         }}
                     >
-                        📹 Добавить камеру
+                        Добавить камеру
                     </button>
                 </form>
             </div>
