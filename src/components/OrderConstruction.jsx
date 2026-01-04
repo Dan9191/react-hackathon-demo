@@ -141,6 +141,13 @@ export default function OrderConstruction({ token, orderId }) {
         setChatLoading(true);
         try {
             const { API_BASE_URL } = getConfig();
+
+            const requestData = {
+                message: newMessage.trim()
+            };
+
+            console.log('Отправка сообщения из строительства:', requestData);
+
             const response = await fetch(
                 `${API_BASE_URL}/api/orders/${orderId}/chatMessages`,
                 {
@@ -149,7 +156,7 @@ export default function OrderConstruction({ token, orderId }) {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(newMessage)
+                    body: JSON.stringify(requestData)
                 }
             );
 
