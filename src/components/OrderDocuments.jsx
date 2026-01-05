@@ -171,23 +171,47 @@ export default function OrderDocuments({ token, orderId }) {
         }
     };
 
-    const downloadDocument = (document) => {
-        if (document.content) {
-            // Если есть контент в base64 или текст
-            const blob = new Blob([document.content], { type: 'application/pdf' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = document.fileName || `document_${document.id}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        } else if (document.fileName) {
-            // Если есть ссылка на файл
+    const downloadDocument = async (doc) => {
+        if (!doc?.id) return;
+
+        try {
             const { API_BASE_URL } = getConfig();
-            const downloadUrl = `${API_BASE_URL}/api/orders/${orderId}/documents/${document.id}/download`;
-            window.open(downloadUrl, '_blank');
+
+            // Используем эндпоинт для скачивания
+            const response = await fetch(
+                `${API_BASE_URL}/api/orders/${orderId}/documents/${doc.id}/download`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`Ошибка: ${response.status}`);
+            }
+
+            // Получаем blob данных
+            const blob = await response.blob();
+
+            // Получаем имя файла
+            let fileName = doc.fileName || doc.title || `document_${doc.id}.pdf`;
+
+            // Создаем ссылку для скачивания
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Освобождаем URL
+            window.URL.revokeObjectURL(url);
+
+        } catch (err) {
+            console.error('Ошибка скачивания документа:', err);
+            alert('Ошибка при скачивании документа: ' + err.message);
         }
     };
 
@@ -364,13 +388,16 @@ export default function OrderDocuments({ token, orderId }) {
                                     <button
                                         onClick={() => downloadDocument(doc)}
                                         style={{
-                                            padding: '8px 16px',
-                                            background: 'transparent',
-                                            border: '1px solid #666',
-                                            color: '#666',
+                                            padding: '6px 12px',
+                                            background: '#2196F3',
+                                            color: 'white',
+                                            border: 'none',
                                             borderRadius: '4px',
                                             cursor: 'pointer',
-                                            fontSize: '0.9rem'
+                                            fontSize: '0.9rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
                                         }}
                                     >
                                         Скачать

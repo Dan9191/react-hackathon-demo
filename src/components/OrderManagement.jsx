@@ -22,6 +22,7 @@ export default function OrderManagement({ token }) {
     const [userInfo, setUserInfo] = useState(null);
     const [lastMessageId, setLastMessageId] = useState(null);
     const [isPolling, setIsPolling] = useState(true);
+    const [downloadingDocs, setDownloadingDocs] = useState({});
 
     // Формы
     const [newStatus, setNewStatus] = useState({
@@ -427,8 +428,13 @@ export default function OrderManagement({ token }) {
 
         const data = await response.json();
         console.log('Documents', data);
-        setDocuments(Array.isArray(data) ? data : []);
-        return data;
+
+        // Использую функцию для получения только последних версий
+        const allDocuments = Array.isArray(data) ? data : [];
+        const latestDocuments = getLatestDocumentVersions(allDocuments);
+
+        setDocuments(latestDocuments);
+        return latestDocuments;
     };
 
     const loadOrderStages = async () => {
@@ -546,6 +552,61 @@ export default function OrderManagement({ token }) {
         }
     };
 
+    const handleDownloadDocument = async (documentId, fileName) => {
+        try {
+            setDownloadingDocs(prev => ({ ...prev, [documentId]: true }));
+
+            const { API_BASE_URL } = getConfig();
+
+            const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/documents/${documentId}/download`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Ошибка загрузки файла: ${response.status}`);
+            }
+
+            const blob = await response.blob();
+
+            const url = window.URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName || `document_${documentId}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            window.URL.revokeObjectURL(url);
+
+        } catch (err) {
+            console.error('Ошибка скачивания документа:', err);
+            alert('Ошибка при скачивании файла: ' + err.message);
+        } finally {
+            setDownloadingDocs(prev => ({ ...prev, [documentId]: false }));
+        }
+    };
+
+    // Функция для получения только последних версий документов
+    const getLatestDocumentVersions = (documents) => {
+        if (!documents || documents.length === 0) return [];
+
+        const latestVersions = {};
+
+        documents.forEach(doc => {
+            const docKey = doc.title || `doc_${doc.type}`;
+
+            if (!latestVersions[docKey] ||
+                (doc.createdAt && doc.version &&
+                    (doc.version > latestVersions[docKey].version ||
+                        new Date(doc.createdAt) > new Date(latestVersions[docKey].createdAt)))) {
+                latestVersions[docKey] = doc;
+            }
+        });
+
+        return Object.values(latestVersions);
+    };
+
     // Функция для изменения адреса
     const handleUpdateAddress = async () => {
         if (!editAddress.address.trim()) {
@@ -657,7 +718,7 @@ export default function OrderManagement({ token }) {
             const { API_BASE_URL } = getConfig();
             
             // Форматируем дату в ISO строку
-            const formattedDate = newStage.plannedEndDate 
+            const formattedDate = newStage.plannedEndDate
                 ? new Date(newStage.plannedEndDate).toISOString()
                 : null;
 
@@ -848,8 +909,8 @@ export default function OrderManagement({ token }) {
             if (isNaN(date.getTime())) return '';
 
             const now = new Date();
-            const isToday = date.getDate() === now.getDate() && 
-                           date.getMonth() === now.getMonth() && 
+            const isToday = date.getDate() === now.getDate() &&
+                           date.getMonth() === now.getMonth() &&
                            date.getFullYear() === now.getFullYear();
 
             if (isToday) {
@@ -1726,29 +1787,38 @@ export default function OrderManagement({ token }) {
                                         <td style={{ padding: '1rem' }}>
                                             {doc.content && (
                                                 <button
-                                                    onClick={() => {
-                                                        if (doc.content) {
-                                                            try {
-                                                                const link = document.createElement('a');
-                                                                link.href = `data:application/octet-stream;base64,${doc.content}`;
-                                                                link.download = doc.fileName || 'document';
-                                                                link.click();
-                                                            } catch (err) {
-                                                                alert('Ошибка скачивания файла');
-                                                            }
-                                                        }
-                                                    }}
+                                                    onClick={() => handleDownloadDocument(doc.id, doc.fileName)}
+                                                    disabled={downloadingDocs[doc.id]}
                                                     style={{
                                                         padding: '6px 12px',
-                                                        background: '#2196F3',
+                                                        background: downloadingDocs[doc.id] ? '#ccc' : '#2196F3',
                                                         color: 'white',
                                                         border: 'none',
                                                         borderRadius: '4px',
-                                                        cursor: 'pointer',
-                                                        fontSize: '0.9rem'
+                                                        cursor: downloadingDocs[doc.id] ? 'not-allowed' : 'pointer',
+                                                        fontSize: '0.9rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px'
                                                     }}
                                                 >
-                                                    📥 Скачать
+                                                    {downloadingDocs[doc.id] ? (
+                                                        <>
+                                                            <div style={{
+                                                                width: '12px',
+                                                                height: '12px',
+                                                                border: '2px solid #fff',
+                                                                borderTopColor: 'transparent',
+                                                                borderRadius: '50%',
+                                                                animation: 'spin 1s linear infinite'
+                                                            }}></div>
+                                                            Загрузка...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            Скачать
+                                                        </>
+                                                    )}
                                                 </button>
                                             )}
                                         </td>
