@@ -112,7 +112,7 @@ export default function OrderDocuments({ token, orderId }) {
         try {
             const { API_BASE_URL } = getConfig();
             const response = await fetch(
-                `${API_BASE_URL}/api/orders/${orderId}/documents/${documentId}`,
+                `${API_BASE_URL}/api/orders/${orderId}/documents/${documentId}/view`,
                 {
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -124,9 +124,34 @@ export default function OrderDocuments({ token, orderId }) {
                 throw new Error(`HTTP ${response.status}`);
             }
 
-            const documentData = await response.json();
-            setSelectedDoc(documentData);
-            setShowModal(true);
+            // Получаем тип контента
+            const contentType = response.headers.get('content-type');
+
+            // Если это PDF или изображение, открываем в новой вкладке
+            if (contentType.includes('application/pdf') || contentType.includes('image/')) {
+                // Получаем blob и создаем URL
+                const blob = await response.blob();
+                const blobUrl = URL.createObjectURL(blob);
+
+                // Открываем в новой вкладке
+                window.open(blobUrl, '_blank');
+
+                // Очищаем URL через некоторое время
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+                setShowModal(false); // Закрываем модалку, если открыта
+            } else {
+                // Для текстовых файлов читаем текст
+                const text = await response.text();
+                setSelectedDoc({
+                    id: documentId,
+                    title: 'Документ',
+                    content: text,
+                    contentType: contentType
+                });
+                setShowModal(true);
+            }
+
         } catch (err) {
             console.error('Ошибка загрузки документа:', err);
             alert('Не удалось загрузить документ');
@@ -454,37 +479,49 @@ export default function OrderDocuments({ token, orderId }) {
                                 ×
                             </button>
                         </div>
-                        
+
                         <div style={{
                             padding: '1.5rem',
                             overflow: 'auto',
-                            flex: 1
+                            flex: 1,
+                            minHeight: '400px'
                         }}>
-                            {selectedDoc.content ? (
-                                selectedDoc.fileName?.endsWith('.pdf') ? (
-                                    <iframe
-                                        src={`data:application/pdf;base64,${selectedDoc.content}`}
-                                        title={selectedDoc.title}
-                                        style={{ width: '100%', height: '500px', border: 'none' }}
-                                    />
-                                ) : (
-                                    <pre style={{
-                                        whiteSpace: 'pre-wrap',
-                                        wordWrap: 'break-word',
-                                        fontFamily: 'monospace',
-                                        fontSize: '14px',
-                                        margin: 0
-                                    }}>
-                                        {selectedDoc.content}
-                                    </pre>
-                                )
+                            {/* Отображаем PDF или изображение в iframe */}
+                            {selectedDoc.viewUrl ? (
+                                <iframe
+                                    src={selectedDoc.viewUrl}
+                                    title={selectedDoc.title}
+                                    style={{
+                                        width: '100%',
+                                        height: '500px',
+                                        border: 'none',
+                                        background: 'white'
+                                    }}
+                                    onLoad={() => {
+                                        // Добавляем заголовок авторизации для iframe
+                                        const iframe = document.querySelector('iframe');
+                                        if (iframe) {
+                                            // Нужно настроить CORS на сервере для работы iframe
+                                        }
+                                    }}
+                                />
+                            ) : selectedDoc.content ? (
+                                <pre style={{
+                                    whiteSpace: 'pre-wrap',
+                                    wordWrap: 'break-word',
+                                    fontFamily: 'monospace',
+                                    fontSize: '14px',
+                                    margin: 0
+                                }}>
+                        {selectedDoc.content}
+                    </pre>
                             ) : (
                                 <p style={{ color: '#666', textAlign: 'center' }}>
-                                    Содержимое документа не доступно
+                                    Содержимое документа не доступно для просмотра
                                 </p>
                             )}
                         </div>
-                        
+
                         <div style={{
                             padding: '1rem 1.5rem',
                             borderTop: '1px solid #e0e0e0',
@@ -495,11 +532,11 @@ export default function OrderDocuments({ token, orderId }) {
                         }}>
                             <div style={{ color: '#666', fontSize: '0.9rem' }}>
                                 Статус: <span style={{
-                                    color: getDocumentStatusColor(selectedDoc.status),
-                                    fontWeight: 'bold'
-                                }}>
-                                    {getDocumentStatusText(selectedDoc.status)}
-                                </span>
+                                color: getDocumentStatusColor(selectedDoc.status),
+                                fontWeight: 'bold'
+                            }}>
+                        {getDocumentStatusText(selectedDoc.status)}
+                    </span>
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <button
