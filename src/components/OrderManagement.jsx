@@ -591,15 +591,19 @@ export default function OrderManagement({ token }) {
     const getLatestDocumentVersions = (documents) => {
         if (!documents || documents.length === 0) return [];
 
+        // Сначала сортируем по дате создания (самые новые вперед)
+        const sortedDocs = [...documents].sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+        });
+
         const latestVersions = {};
 
-        documents.forEach(doc => {
-            const docKey = doc.title || `doc_${doc.type}`;
-
-            if (!latestVersions[docKey] ||
-                (doc.createdAt && doc.version &&
-                    (doc.version > latestVersions[docKey].version ||
-                        new Date(doc.createdAt) > new Date(latestVersions[docKey].createdAt)))) {
+        // Берем первый встретившийся документ для каждой комбинации тип+название
+        sortedDocs.forEach(doc => {
+            const docKey = `${doc.type}_${doc.title || 'untitled'}`;
+            if (!latestVersions[docKey]) {
                 latestVersions[docKey] = doc;
             }
         });
@@ -1714,7 +1718,7 @@ export default function OrderManagement({ token }) {
                             fontWeight: 600
                         }}
                     >
-                        📄 Добавить документ
+                        Добавить документ
                     </button>
                 </form>
             </div>
@@ -1773,13 +1777,13 @@ export default function OrderManagement({ token }) {
                                         <td style={{ padding: '1rem' }}>
                                             <span style={{
                                                 padding: '4px 8px',
-                                                background: doc.status === 'approved' ? '#4CAF50' :
+                                                background: doc.status === 'signed' ? '#4CAF50' :
                                                     doc.status === 'rejected' ? '#F44336' : '#FF9800',
                                                 color: 'white',
                                                 borderRadius: '4px',
                                                 fontSize: '0.85rem'
                                             }}>
-                                                {doc.status === 'approved' ? 'Подтвержден' :
+                                                {doc.status === 'signed' ? 'Подтвержден' :
                                                     doc.status === 'rejected' ? 'Отклонен' : 'На рассмотрении'}
                                             </span>
                                         </td>
