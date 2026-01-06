@@ -19,6 +19,9 @@ export default function OrderConstruction({ token, orderId }) {
     
     const messagesEndRef = useRef(null);
     const chatIntervalRef = useRef(null);
+    const chatContainerRef = useRef(null);
+
+    const [expandedStages, setExpandedStages] = useState({});
 
     useEffect(() => {
         fetchStages();
@@ -214,6 +217,19 @@ export default function OrderConstruction({ token, orderId }) {
         }
     };
 
+    const formatShortDate = (dateString) => {
+        if (!dateString) return '-';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit'
+            });
+        } catch (e) {
+            return '-';
+        }
+    };
+
     const calculateProgress = (stage) => {
         if (!stage) return 0;
         if (stage.progress !== undefined) {
@@ -235,12 +251,25 @@ export default function OrderConstruction({ token, orderId }) {
         return stage.status === 'completed' ? 100 : 0;
     };
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const toggleStage = (stageId) => {
+        setExpandedStages(prev => ({
+            ...prev,
+            [stageId]: !prev[stageId]
+        }));
     };
 
+    /*const scrollToBottom = () => {
+        // Прокручиваем контейнер чата, а не всю страницу
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    };*/
+
     useEffect(() => {
-        scrollToBottom();
+        if (chatContainerRef.current) {
+            // Прокручиваем до самого низа контейнера чата
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
     }, [messages]);
 
     if (loading) {
@@ -344,6 +373,7 @@ export default function OrderConstruction({ token, orderId }) {
                                 const progress = calculateProgress(stage);
                                 const isActive = stage.status === 'in_progress';
                                 const isCompleted = stage.status === 'completed';
+                                const isExpanded = expandedStages[stage.id];
 
                                 return (
                                     <div
@@ -352,31 +382,41 @@ export default function OrderConstruction({ token, orderId }) {
                                             border: `2px solid ${isActive ? '#FF9800' : isCompleted ? '#4CAF50' : '#e0e0e0'}`,
                                             borderRadius: '8px',
                                             padding: '1rem',
-                                            background: isActive ? '#FFF3E0' : isCompleted ? '#F1F8E9' : 'white'
+                                            background: isActive ? '#FFF3E0' : isCompleted ? '#F1F8E9' : 'white',
+                                            cursor: 'pointer' // Добавь это для указателя мыши
                                         }}
+                                        onClick={() => toggleStage(stage.id)} // Добавь обработчик клика
                                     >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                        {/* Заголовок этапа - всегда видимый */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: isExpanded ? '0.5rem' : '0' }}>
                                             <div>
                                                 <h5 style={{ color: '#1a237e', margin: '0 0 0.25rem 0' }}>
                                                     {stage.stageName}
+                                                    {/* Добавь стрелочку */}
+                                                    <span style={{
+                                                        marginLeft: '8px',
+                                                        fontSize: '0.8rem',
+                                                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                        display: 'inline-block',
+                                                        transition: 'transform 0.2s ease'
+                                                    }}>
+                            ▼
+                        </span>
                                                 </h5>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
-                                                    <span style={{
-                                                        padding: '2px 8px',
-                                                        borderRadius: '12px',
-                                                        background: getStageStatusColor(stage.status),
-                                                        color: 'white',
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 'bold'
-                                                    }}>
-                                                        {getStageStatusText(stage.status)}
-                                                    </span>
-                                                    <span style={{ color: '#666', fontSize: '0.85rem' }}>
-                                                        {stage.stageType}
-                                                    </span>
+                        <span style={{
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            background: getStageStatusColor(stage.status),
+                            color: 'white',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold'
+                        }}>
+                            {getStageStatusText(stage.status)}
+                        </span>
                                                 </div>
                                             </div>
-                                            {stage.createdBy && (
+                                            {stage.createdBy && isExpanded && ( // Показываем только при раскрытии
                                                 <div style={{ textAlign: 'right', fontSize: '0.85rem', color: '#666' }}>
                                                     <div>{stage.createdBy.fullName}</div>
                                                     <div style={{ color: '#999' }}>{stage.createdBy.role}</div>
@@ -384,14 +424,40 @@ export default function OrderConstruction({ token, orderId }) {
                                             )}
                                         </div>
 
-                                        <p style={{ color: '#666', fontSize: '0.9rem', margin: '0 0 1rem 0' }}>
-                                            {stage.description || 'Описание отсутствует'}
-                                        </p>
+                                        {/* Описание показываем только в раскрытом состоянии */}
+                                        {isExpanded && stage.description && (
+                                            <p style={{
+                                                color: '#666',
+                                                fontSize: '0.9rem',
+                                                margin: '0 0 1rem 0',
+                                                lineHeight: '1.4'
+                                            }}>
+                                                {stage.description}
+                                            </p>
+                                        )}
 
-                                        {/* Прогресс бар */}
+                                        {/* Если описания нет и этап раскрыт - показываем сообщение */}
+                                        {isExpanded && !stage.description && (
+                                            <p style={{
+                                                color: '#999',
+                                                fontSize: '0.85rem',
+                                                margin: '0 0 1rem 0',
+                                                fontStyle: 'italic'
+                                            }}>
+                                                Описание отсутствует
+                                            </p>
+                                        )}
+
+                                        {/* Прогресс бар - показываем всегда, но меньше при свернутом состоянии */}
                                         {stage.status === 'in_progress' && (
-                                            <div style={{ marginBottom: '1rem' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#666', marginBottom: '0.25rem' }}>
+                                            <div style={{ marginBottom: isExpanded ? '1rem' : '0.5rem' }}>
+                                                <div style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    fontSize: isExpanded ? '0.9rem' : '0.8rem',
+                                                    color: '#666',
+                                                    marginBottom: '0.25rem'
+                                                }}>
                                                     <span>Прогресс: {progress}%</span>
                                                     {stage.progress !== undefined && (
                                                         <span>{stage.progress}%</span>
@@ -399,7 +465,7 @@ export default function OrderConstruction({ token, orderId }) {
                                                 </div>
                                                 <div style={{
                                                     width: '100%',
-                                                    height: '6px',
+                                                    height: isExpanded ? '6px' : '4px',
                                                     background: '#e0e0e0',
                                                     borderRadius: '3px',
                                                     overflow: 'hidden'
@@ -415,29 +481,46 @@ export default function OrderConstruction({ token, orderId }) {
                                             </div>
                                         )}
 
-                                        {/* Даты этапа */}
-                                        <div style={{
-                                            display: 'grid',
-                                            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                                            gap: '0.5rem',
-                                            fontSize: '0.8rem',
-                                            color: '#666'
-                                        }}>
-                                            <div>
-                                                <strong>Начало:</strong><br />
-                                                {formatDate(stage.startDate)}
-                                            </div>
-                                            <div>
-                                                <strong>План окончания:</strong><br />
-                                                {formatDate(stage.plannedEndDate)}
-                                            </div>
-                                            {stage.actualEndDate && (
+                                        {/* Даты этапа - показываем только при раскрытии */}
+                                        {isExpanded && (
+                                            <div style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                                                gap: '0.5rem',
+                                                fontSize: '0.8rem',
+                                                color: '#666'
+                                            }}>
                                                 <div>
-                                                    <strong>Факт окончания:</strong><br />
-                                                    {formatDate(stage.actualEndDate)}
+                                                    <strong>Начало:</strong><br />
+                                                    {formatDate(stage.startDate)}
                                                 </div>
-                                            )}
-                                        </div>
+                                                <div>
+                                                    <strong>План окончания:</strong><br />
+                                                    {formatDate(stage.plannedEndDate)}
+                                                </div>
+                                                {stage.actualEndDate && (
+                                                    <div>
+                                                        <strong>Факт окончания:</strong><br />
+                                                        {formatDate(stage.actualEndDate)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Краткие даты для свернутого состояния */}
+                                        {!isExpanded && (
+                                            <div style={{
+                                                fontSize: '0.75rem',
+                                                color: '#666',
+                                                display: 'flex',
+                                                gap: '1rem'
+                                            }}>
+                                                <span>Начало: {formatShortDate(stage.startDate)}</span>
+                                                {stage.plannedEndDate && (
+                                                    <span>План: {formatShortDate(stage.plannedEndDate)}</span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -465,7 +548,9 @@ export default function OrderConstruction({ token, orderId }) {
                             <span>💬</span> Чат проекта
                         </h4>
                         
-                        <div style={{
+                        <div
+                            ref={chatContainerRef}
+                            style={{
                             flex: 1,
                             overflow: 'auto',
                             padding: '1rem',
@@ -475,7 +560,8 @@ export default function OrderConstruction({ token, orderId }) {
                             background: '#f9f9f9',
                             minHeight: '300px',
                             maxHeight: '400px'
-                        }}>
+                            }}
+                        >
                             {messages.length === 0 ? (
                                 <div style={{ textAlign: 'center', color: '#999', padding: '2rem' }}>
                                     Нет сообщений. Начните общение!
