@@ -340,7 +340,7 @@ export default function OrderManagement({ token }) {
         switch (currentStatus) {
             case 'new':
                 statusList = [
-                    { value: 'documentation', label: 'Документирование' },
+                    { value: 'documentation', label: 'Подготовка документации' },
                     { value: 'construction', label: 'Строительство' }
                 ];
                 break;
@@ -352,19 +352,19 @@ export default function OrderManagement({ token }) {
                 break;
             case 'construction':
                 statusList = [
-                    { value: 'completion', label: 'Завершение' },
-                    { value: 'documentation', label: 'Документирование' }
+                    { value: 'documentation', label: 'Подготовка документации' },
+                    { value: 'completion', label: 'Завершение' }
                 ];
                 break;
             case 'completion':
                 statusList = [
-                    { value: 'closed', label: 'Закрыт' },
-                    { value: 'construction', label: 'Строительство' }
+                    { value: 'construction', label: 'Строительство' },
+                    { value: 'closed', label: 'Закрыт' }
                 ];
                 break;
             default:
                 statusList = [
-                    { value: 'documentation', label: 'Документирование' },
+                    { value: 'documentation', label: 'Подготовка документации' },
                     { value: 'construction', label: 'Строительство' },
                     { value: 'completion', label: 'Завершение' },
                     { value: 'closed', label: 'Закрыт' }
@@ -880,7 +880,7 @@ export default function OrderManagement({ token }) {
         const statusLower = status.toLowerCase();
         switch (statusLower) {
             case 'new': return 'Новый';
-            case 'documentation': return 'Документирование';
+            case 'documentation': return 'Подготовка документации';
             case 'construction': return 'Строительство';
             case 'completion': return 'Завершение';
             case 'closed': return 'Закрыт';
@@ -1208,6 +1208,7 @@ export default function OrderManagement({ token }) {
                                 {getStatusText(order.currentStatus?.statusType)}
                             </span>
                         </p>
+                        <p><strong>Комментарий к статусу:</strong> {order.currentStatus?.comment || 'Нет комментария'}</p>
 
                         {order.currentStage && (
                             <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #dee2e6' }}>
@@ -1523,7 +1524,7 @@ export default function OrderManagement({ token }) {
 
                     <div style={{ marginBottom: '1.5rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                            Комментарий к изменению статуса
+                            Комментарий к изменению статуса <span style={{ color: '#999', fontSize: '0.9rem', fontWeight: 'normal' }}>(необязательно)</span>
                         </label>
                         <textarea
                             value={newStatus.comment}
@@ -1533,11 +1534,9 @@ export default function OrderManagement({ token }) {
                                 padding: '10px',
                                 border: '1px solid #ddd',
                                 borderRadius: '6px',
-                                fontSize: '1rem',
                                 minHeight: '100px'
                             }}
                             placeholder="Опишите причину изменения статуса..."
-                            required
                         />
                     </div>
 

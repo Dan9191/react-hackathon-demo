@@ -101,7 +101,7 @@ export default function UserOrders({ token }) {
             case 'new':
                 return 'Новый';
             case 'documentation':
-                return 'Подготовка документов';
+                return 'Подготовка документации';
             case 'construction':
                 return 'Строительство';
             case 'completion':
