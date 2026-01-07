@@ -569,7 +569,7 @@ export default function PublicContent({ token }) {
                                             e.target.style.boxShadow = 'none';
                                         }}
                                     >
-                                        {token ? '📝 Подробнее и заказать' : '🔑 Войти для заказа'}
+                                        {token ? 'Подробнее и заказать' : 'Войти для заказа'}
                                     </button>
                                 )}
                             </div>

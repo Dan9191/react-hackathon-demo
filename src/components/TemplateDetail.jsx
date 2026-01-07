@@ -615,7 +615,7 @@ export default function TemplateDetail({ token, setToken }) {
                                     fontWeight: 600,
                                     border: `1px solid ${template.isActive ? '#c8e6c9' : '#ffccbc'}`
                                 }}>
-                                    {template.isActive ? '✅ Доступен для заказа' : '⏸️ Временно недоступен'}
+                                    {template.isActive ? 'Доступен для заказа' : 'Временно недоступен'}
                                 </span>
                             </div>
                         </div>
@@ -682,10 +682,10 @@ export default function TemplateDetail({ token, setToken }) {
                                         }
                                     }}
                                 >
-                                    {!token ? '🔑 Войти для оформления заказа' :
+                                    {!token ? 'Войти для оформления заказа' :
                                         isAdmin ? '👑 Администратор' :
-                                            !template.isActive ? '⏸️ Проект недоступен' :
-                                                '📝 Оформить заказ'}
+                                            !template.isActive ? 'Проект недоступен' :
+                                                'Оформить заказ'}
                                 </button>
 
                                 {!token ? (

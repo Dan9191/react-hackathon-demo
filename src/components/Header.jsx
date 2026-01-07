@@ -640,7 +640,7 @@ export default function Header({ token, setToken }) {
                             e.target.style.boxShadow = '0 4px 15px rgba(33, 150, 243, 0.3)';
                         }}
                     >
-                        <span>🔑</span> Войти / Регистрация
+                        Войти / Регистрация
                     </button>
                 )}
             </div>

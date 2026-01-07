@@ -176,7 +176,7 @@ export default function OrderModal({ token, templateId, templateTitle, onClose, 
                         fontSize: '1.8rem',
                         fontWeight: 700
                     }}>
-                        📝 Оставить заявку
+                        Оставить заявку
                     </h2>
                     <p style={{
                         color: '#666',
@@ -194,11 +194,10 @@ export default function OrderModal({ token, templateId, templateTitle, onClose, 
                 <form onSubmit={handleSubmit}>
                     <div style={{ marginBottom: '1.5rem' }}>
                         <label style={{
-                            display: 'block',
+                            display: 'flex',
                             marginBottom: '0.5rem',
                             fontWeight: 600,
                             color: '#333',
-                            display: 'flex',
                             alignItems: 'center',
                             gap: '8px'
                         }}>
@@ -357,7 +356,7 @@ export default function OrderModal({ token, templateId, templateTitle, onClose, 
                                 </span>
                             ) : (
                                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                                    <span>✅</span> Отправить заявку
+                                    Отправить заявку
                                 </span>
                             )}
                         </button>

@@ -961,7 +961,7 @@ export default function AdminDashboard({ token }) {
                                                         onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
                                                         onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
                                                     >
-                                                        ✅ Взять в работу
+                                                        Взять в работу
                                                     </button>
                                                 </div>
                                             </div>
@@ -1132,7 +1132,7 @@ export default function AdminDashboard({ token }) {
                                                         onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
                                                         onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
                                                     >
-                                                        ✅ Принять заявку
+                                                        Принять заявку
                                                     </button>
                                                     <button
                                                         onClick={() => handleRejectApplication(app.id)}
@@ -1150,7 +1150,7 @@ export default function AdminDashboard({ token }) {
                                                         onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
                                                         onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
                                                     >
-                                                        ❌ Отклонить
+                                                        Отклонить
                                                     </button>
                                                 </div>
                                             </div>
@@ -1277,7 +1277,7 @@ export default function AdminDashboard({ token }) {
                                                                 fontWeight: 600,
                                                                 textAlign: 'center'
                                                             }}>
-                                                                ✅ Заказ создан
+                                                                Заказ создан
                                                             </div>
                                                         )}
                                                     </div>
