@@ -68,3 +68,29 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  update-infra:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    steps:
+      - name: Set lowercase repository owner
+        run: echo "REPO_OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
+      - name: Install yq
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+
+      - name: Clone infra repo
+        run: |
+          git clone https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/dan6103605/infra.git
+          cd infra
+          git config user.email "ci@github"
+          git config user.name "GitHub Actions"
+
+          yq -i '.spec.template.spec.containers[0].image = "ghcr.io/${{ env.REPO_OWNER_LC }}/react-hackathon-demo:sha-${{ github.sha }}"' apps/mos/frontend/deployment.yaml
+
+          git add apps/mos/frontend/deployment.yaml
+          git commit -m "Update frontend image to sha-${{ github.sha }}"
+          git push origin main
