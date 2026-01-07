@@ -241,7 +241,8 @@ export default function UserOrders({ token }) {
     };
 
     const handleOrderAction = (order, action) => {
-        if (action === 'documents' && order.currentStatus?.statusType?.toLowerCase() === 'documentation') {
+        if (action === 'documents' && (order.currentStatus?.statusType?.toLowerCase() === 'documentation'
+            || order.currentStatus?.statusType?.toLowerCase() === 'completion')) {
             setExpandedOrderId(order.id);
             setActiveTab('documents');
         } else if (action === 'construction' && order.currentStatus?.statusType?.toLowerCase() === 'construction') {
@@ -568,7 +569,7 @@ export default function UserOrders({ token }) {
                                                     >
                                                         📋 Детали заказа
                                                     </button>
-                                                    {orderStatus === 'documentation' && (
+                                                    {orderStatus === 'documentation' || orderStatus === 'completion' && (
                                                         <button
                                                             onClick={() => setActiveTab('documents')}
                                                             style={{
@@ -850,7 +851,7 @@ export default function UserOrders({ token }) {
                                                                 <span>👁️</span> Посмотреть проект
                                                             </button>
                                                             
-                                                            {orderStatus === 'documentation' && (
+                                                            {(orderStatus === 'documentation' || orderStatus === 'completion') && (
                                                                 <button
                                                                     onClick={() => handleOrderAction(order, 'documents')}
                                                                     style={{
@@ -907,7 +908,7 @@ export default function UserOrders({ token }) {
                                                             )}
                                                         </div>
                                                     </>
-                                                ) : activeTab === 'documents' && orderStatus === 'documentation' ? (
+                                                ) : activeTab === 'documents' && (orderStatus === 'documentation' || orderStatus === 'completion') ? (
                                                     <OrderDocuments token={token} orderId={order.id} />
                                                 ) : activeTab === 'construction' && orderStatus === 'construction' ? (
                                                     <OrderConstruction token={token} orderId={order.id} />
