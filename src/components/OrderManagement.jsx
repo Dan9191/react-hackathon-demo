@@ -1081,7 +1081,7 @@ export default function OrderManagement({ token }) {
         }
 
         // Вкладки в зависимости от текущего статуса
-        if (currentStatus === 'documentation') {
+        if (currentStatus === 'documentation' || currentStatus === 'construction') {
             tabs.push({
                 id: 'documents',
                 label: '📄 Документы',
