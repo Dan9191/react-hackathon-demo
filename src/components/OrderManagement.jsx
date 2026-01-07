@@ -24,6 +24,18 @@ export default function OrderManagement({ token }) {
     const [isPolling, setIsPolling] = useState(true);
     const [downloadingDocs, setDownloadingDocs] = useState({});
 
+    const [initialLoad, setInitialLoad] = useState(true);
+    const [tabDataLoaded, setTabDataLoaded] = useState({
+        info: true,
+        chat: false,
+        'status-change': false,
+        documents: false,
+        construction: false,
+        cameras: false,
+        'completion-info': false,
+        closed: false
+    });
+
     // Формы
     const [newStatus, setNewStatus] = useState({
         statusType: '',
@@ -94,6 +106,49 @@ export default function OrderManagement({ token }) {
             }
         }
     }, [token]);
+
+    useEffect(() => {
+        if (!order || initialLoad) return;
+
+        const loadDataForActiveTab = async () => {
+            if (tabDataLoaded[activeTab]) return;
+
+            try {
+                const { API_BASE_URL } = getConfig();
+
+                switch(activeTab) {
+                    case 'documents': {
+                        const docsResponse = await fetch(`${API_BASE_URL}/api/orders/${orderId}/documents`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (docsResponse.ok) {
+                            const data = await docsResponse.json();
+                            setDocuments(getLatestDocumentVersions(Array.isArray(data) ? data : []));
+                        }
+                        break;
+                    }
+
+                    case 'construction': {
+                        const stagesResponse = await fetch(`${API_BASE_URL}/api/orders/${orderId}/stages`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (stagesResponse.ok) {
+                            const data = await stagesResponse.json();
+                            setStages(Array.isArray(data.stages) ? data.stages : []);
+                        }
+                        break;
+                    }
+                }
+
+                setTabDataLoaded(prev => ({...prev, [activeTab]: true}));
+
+            } catch (err) {
+                console.error(`Ошибка загрузки данных для вкладки ${activeTab}:`, err);
+            }
+        };
+
+        loadDataForActiveTab();
+    }, [activeTab, order, initialLoad, orderId, token]);
 
     // Запускаем и останавливаем опрос сообщений
     useEffect(() => {
@@ -181,33 +236,57 @@ export default function OrderManagement({ token }) {
     const loadOrderData = async () => {
         setLoading(true);
         setError('');
-        try {
+        setInitialLoad(true);
 
-            // Загружаю информацию о заказе - так как камеры доступны только на этапе строительства
+        try {
+            // 1. ТОЛЬКО ОСНОВНОЙ ЗАКАЗ СНАЧАЛА
             const orderData = await loadOrderInfo();
 
-            // Получаю текущий статус - должен быть строительство
-            const currentStatus = orderData?.currentStatus?.statusType?.toLowerCase() || 'new';
-            console.log('Текущий статус заказа:', currentStatus);
+            // Сразу показываем основную инфу
+            setOrder(orderData);
+            setAvailableStatuses(getAvailableStatuses(orderData));
+            setActiveTabByStatus(orderData.currentStatus?.statusType);
 
-            // Загружаю остальные данные параллельно
-            await Promise.all([
-                loadOrderStatuses(),
-                loadOrderDocuments(),
-                loadOrderStages(),
-                loadAvailableStatuses(),
-                loadChatMessages() // Загружаем сообщения чата всегда
-            ]);
+            // 2. В ФОНЕ грузим чат и статусы
+            setTimeout(async () => {
+                try {
+                    const [chatMessages, statuses] = await Promise.allSettled([
+                        loadChatMessages(),
+                        loadOrderStatuses()
+                    ]);
 
-            // Загружаю камеры если статус "construction"
-            if (currentStatus === 'construction') {
-                await loadCameras();
+                    if (chatMessages.status === 'fulfilled') {
+                        setChatMessages(chatMessages.value);
+                        setTabDataLoaded(prev => ({...prev, chat: true}));
+                    }
+
+                    if (statuses.status === 'fulfilled') {
+                        setStatuses(statuses.value);
+                        setTabDataLoaded(prev => ({...prev, 'status-change': true}));
+                    }
+                } catch (err) {
+                    console.error('Фоновая загрузка чата/статусов:', err);
+                }
+            }, 100);
+
+            // 3. Камеры только если статус construction
+            if (orderData.currentStatus?.statusType?.toLowerCase() === 'construction') {
+                setTimeout(async () => {
+                    try {
+                        const cams = await loadCameras();
+                        setCameras(cams);
+                        setTabDataLoaded(prev => ({...prev, cameras: true}));
+                    } catch (err) {
+                        console.error('Ошибка загрузки камер:', err);
+                    }
+                }, 500);
             }
+
         } catch (err) {
-            console.error('Ошибка загрузки данных заказа:', err);
-            setError('Не удалось загрузить данные заказа: ' + err.message);
+            setError('Ошибка: ' + err.message);
         } finally {
             setLoading(false);
+            setInitialLoad(false);
         }
     };
 
@@ -326,53 +405,45 @@ export default function OrderManagement({ token }) {
 
         const data = await response.json();
         setOrder(data);
-        // Автоматически выбираем вкладку в зависимости от статуса
         setActiveTabByStatus(data.currentStatus?.statusType);
         console.log(data);
         return data;
     };
 
-    const loadAvailableStatuses = async () => {
-        // Загружаем доступные статусы в зависимости от текущего статуса
-        const currentStatus = order?.currentStatus?.statusType?.toLowerCase();
-        let statusList = [];
+    const getAvailableStatuses = (orderData) => {
+        if (!orderData) return [];
+
+        const currentStatus = orderData?.currentStatus?.statusType?.toLowerCase();
 
         switch (currentStatus) {
             case 'new':
-                statusList = [
+                return [
                     { value: 'documentation', label: 'Подготовка документации' },
                     { value: 'construction', label: 'Строительство' }
                 ];
-                break;
             case 'documentation':
-                statusList = [
+                return [
                     { value: 'construction', label: 'Строительство' },
                     { value: 'new', label: 'Новый' }
                 ];
-                break;
             case 'construction':
-                statusList = [
+                return [
                     { value: 'documentation', label: 'Подготовка документации' },
                     { value: 'completion', label: 'Завершение' }
                 ];
-                break;
             case 'completion':
-                statusList = [
+                return [
                     { value: 'construction', label: 'Строительство' },
                     { value: 'closed', label: 'Закрыт' }
                 ];
-                break;
             default:
-                statusList = [
+                return [
                     { value: 'documentation', label: 'Подготовка документации' },
                     { value: 'construction', label: 'Строительство' },
                     { value: 'completion', label: 'Завершение' },
                     { value: 'closed', label: 'Закрыт' }
                 ];
         }
-
-        setAvailableStatuses(statusList);
-        return statusList;
     };
 
     const setActiveTabByStatus = (statusType) => {
@@ -1634,13 +1705,12 @@ export default function OrderManagement({ token }) {
                                     borderRadius: '6px'
                                 }}
                             >
-                                <option value="contract">Договор</option>
-                                <option value="specification">Спецификация</option>
-                                <option value="permit">Разрешение</option>
-                                <option value="report">Отчет</option>
-                                <option value="act">Акт</option>
-                                <option value="invoice">Счет</option>
-                                <option value="other">Другое</option>
+                                <option value="CONTRACT">Договор подряда</option>
+                                <option value="ESTIMATE">Смета</option>
+                                <option value="PERMIT">Разрешительная документация</option>
+                                <option value="SITE_PLAN">План участка</option>
+                                <option value="TECHNICAL_DOCUMENTATION">Техническая документация</option>
+                                <option value="ACCEPTANCE_CERTIFICATE">Акт приема-передачи</option>
                             </select>
                         </div>
 
@@ -2248,7 +2318,7 @@ export default function OrderManagement({ token }) {
                 padding: '2rem',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
             }}>
-                <h2 style={{ color: '#1a237e', marginBottom: '1.5rem' }}>📹 Список камер</h2>
+                <h2 style={{ color: '#1a237e', marginBottom: '1.5rem' }}> Список камер</h2>
 
                 {cameras.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '2rem', color: '#999' }}>
@@ -2455,7 +2525,7 @@ export default function OrderManagement({ token }) {
                 padding: '2rem',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
             }}>
-                <h2 style={{ color: '#1a237e', marginBottom: '1.5rem' }}>✅ Информация о завершении</h2>
+                <h2 style={{ color: '#1a237e', marginBottom: '1.5rem' }}> Информация о завершении</h2>
 
                 <div style={{ marginBottom: '2rem' }}>
                     <div style={{
