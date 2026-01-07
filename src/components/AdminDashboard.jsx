@@ -1363,20 +1363,23 @@ export default function AdminDashboard({ token }) {
                                                             </strong>
                                                         </p>
                                                     </div>
-                                                    {order.currentStatus && (
-                                                        <span style={{
-                                                            padding: '4px 12px',
-                                                            background: order.currentStatus.status === 'completed' ? '#4CAF50' :
-                                                                order.currentStatus.status === 'in_progress' ? '#FF9800' : '#2196F3',
-                                                            color: 'white',
-                                                            borderRadius: '20px',
-                                                            fontSize: '0.8rem',
-                                                            fontWeight: 600
-                                                        }}>
-                                                            {order.currentStatus.status === 'completed' ? 'Завершен' :
-                                                                order.currentStatus.status === 'in_progress' ? 'В работе' : 'Новый'}
-                                                        </span>
-                                                    )}
+                                                    {order.currentStatus?.statusType && (() => {
+                                                        const status = order.currentStatus?.statusType.toLowerCase();
+                                                        return (
+                                                            <span style={{
+                                                                padding: '4px 12px',
+                                                                background: status === 'closed' ? '#4CAF50' :
+                                                                    status === 'new' ? '#FF9800' : '#2196F3',
+                                                                color: 'white',
+                                                                borderRadius: '20px',
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: 600
+                                                            }}>
+                                                                {status === 'closed' ? 'Завершен' :
+                                                                    status === 'new' ? 'Новый' : 'В работе'}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </div>
 
                                                 <div style={{ marginBottom: '1.5rem' }}>
@@ -1443,7 +1446,7 @@ export default function AdminDashboard({ token }) {
                                                         onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
                                                         onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
                                                     >
-                                                        📋 Управление заказом
+                                                        Управление заказом
                                                     </Link>
                                                 </div>
                                             </div>
