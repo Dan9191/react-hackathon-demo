@@ -138,6 +138,37 @@ export default function OrderManagement({ token }) {
                         }
                         break;
                     }
+
+                    case 'closed': {
+                        // Загружаем данные для закрытого заказа
+                        const [docsResponse, stagesResponse, statusesResponse] = await Promise.allSettled([
+                            fetch(`${API_BASE_URL}/api/orders/${orderId}/documents`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            }),
+                            fetch(`${API_BASE_URL}/api/orders/${orderId}/stages`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            }),
+                            fetch(`${API_BASE_URL}/api/orders/${orderId}/status`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            })
+                        ]);
+
+                        if (docsResponse.status === 'fulfilled' && docsResponse.value.ok) {
+                            const data = await docsResponse.value.json();
+                            setDocuments(getLatestDocumentVersions(Array.isArray(data) ? data : []));
+                        }
+
+                        if (stagesResponse.status === 'fulfilled' && stagesResponse.value.ok) {
+                            const data = await stagesResponse.value.json();
+                            setStages(Array.isArray(data.stages) ? data.stages : []);
+                        }
+
+                        if (statusesResponse.status === 'fulfilled' && statusesResponse.value.ok) {
+                            const data = await statusesResponse.value.json();
+                            setStatuses(Array.isArray(data.statuses) ? data.statuses : []);
+                        }
+                        break;
+                    }
                 }
 
                 setTabDataLoaded(prev => ({...prev, [activeTab]: true}));
@@ -2644,6 +2675,26 @@ export default function OrderManagement({ token }) {
     const renderClosedTab = () => {
         if (!order) return null;
 
+        // Считаем статистику только если данные загружены
+        const completedStagesCount = Array.isArray(stages)
+            ? stages.filter(s => s.status === 'completed').length
+            : 0;
+
+        const inProgressStagesCount = Array.isArray(stages)
+            ? stages.filter(s => s.status === 'in_progress').length
+            : 0;
+
+        const notStartedStagesCount = Array.isArray(stages)
+            ? stages.filter(s => s.status === 'not_started').length
+            : 0;
+
+        const totalStages = completedStagesCount + inProgressStagesCount + notStartedStagesCount;
+        const totalDocuments = Array.isArray(documents) ? documents.length : 0;
+        const totalStatuses = Array.isArray(statuses) ? statuses.length : 0;
+
+        // Используем дату из текущего статуса закрытия, если она есть
+        const completionDate = order.currentStatus?.createdAt || order.updatedAt;
+
         return (
             <div style={{
                 background: 'white',
@@ -2676,10 +2727,10 @@ export default function OrderManagement({ token }) {
                         </div>
                         <div>
                             <h4 style={{ color: '#666', marginBottom: '0.5rem' }}>Итоговая статистика</h4>
-                            <p><strong>Дата завершения:</strong> {formatDate(order.updatedAt)}</p>
-                            <p><strong>Всего этапов выполнено:</strong> {stages.length}</p>
-                            <p><strong>Всего документов:</strong> {documents.length}</p>
-                            <p><strong>Статусов в истории:</strong> {statuses.length}</p>
+                            <p><strong>Дата завершения:</strong> {formatDate(completionDate)}</p>
+                            <p><strong>Всего этапов выполнено:</strong> {totalStages}</p>
+                            <p><strong>Всего документов:</strong> {totalDocuments}</p>
+                            <p><strong>Статусов в истории:</strong> {totalStatuses}</p>
                         </div>
                     </div>
 
@@ -2688,19 +2739,19 @@ export default function OrderManagement({ token }) {
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'wrap' }}>
                             <div style={{ textAlign: 'center' }}>
                                 <div style={{ fontSize: '1.5rem', color: '#4CAF50', fontWeight: 'bold' }}>
-                                    {stages.filter(s => s.status === 'completed').length}
+                                    {completedStagesCount}
                                 </div>
                                 <div style={{ color: '#666', fontSize: '0.9rem' }}>Завершено</div>
                             </div>
                             <div style={{ textAlign: 'center' }}>
                                 <div style={{ fontSize: '1.5rem', color: '#FF9800', fontWeight: 'bold' }}>
-                                    {stages.filter(s => s.status === 'in_progress').length}
+                                    {inProgressStagesCount}
                                 </div>
                                 <div style={{ color: '#666', fontSize: '0.9rem' }}>В работе</div>
                             </div>
                             <div style={{ textAlign: 'center' }}>
                                 <div style={{ fontSize: '1.5rem', color: '#9E9E9E', fontWeight: 'bold' }}>
-                                    {stages.filter(s => s.status === 'not_started').length}
+                                    {notStartedStagesCount}
                                 </div>
                                 <div style={{ color: '#666', fontSize: '0.9rem' }}>Не начато</div>
                             </div>
