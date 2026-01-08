@@ -1256,7 +1256,14 @@ export default function AdminDashboard({ token }) {
                                                     }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                             <span style={{ color: '#666' }}>📅 Обработана:</span>
-                                                            <span style={{ fontWeight: 500 }}>{formatDate(app.updatedAt)}</span>
+                                                            <span style={{ fontWeight: 500 }}>
+                                                                {formatDate(
+                                                                    app.processedAt ||
+                                                                    app.updatedAt ||
+                                                                    app.closedAt ||
+                                                                    app.createdAt
+                                                                )}
+                                                            </span>
                                                         </div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                             <span style={{ color: '#666' }}>👨‍💼 Менеджер:</span>
