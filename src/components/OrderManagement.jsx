@@ -1858,7 +1858,7 @@ export default function OrderManagement({ token }) {
                                         </td>
                                         <td style={{ padding: '1rem' }}>{formatDate(doc.createdAt)}</td>
                                         <td style={{ padding: '1rem' }}>
-                                            {doc.content && (
+                                            {doc.fileName && (
                                                 <button
                                                     onClick={() => handleDownloadDocument(doc.id, doc.fileName)}
                                                     disabled={downloadingDocs[doc.id]}
