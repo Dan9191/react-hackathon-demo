@@ -1376,14 +1376,16 @@ export default function AdminDashboard({ token }) {
                                                             <span style={{
                                                                 padding: '4px 12px',
                                                                 background: status === 'closed' ? '#4CAF50' :
-                                                                    status === 'new' ? '#FF9800' : '#2196F3',
+                                                                    status === 'new' ? '#FF9800' :
+                                                                    status === 'cancelled' ? '#F44336' : '#2196F3',
                                                                 color: 'white',
                                                                 borderRadius: '20px',
                                                                 fontSize: '0.8rem',
                                                                 fontWeight: 600
                                                             }}>
                                                                 {status === 'closed' ? 'Завершен' :
-                                                                    status === 'new' ? 'Новый' : 'В работе'}
+                                                                    status === 'new' ? 'Новый' :
+                                                                        status === 'cancelled' ? 'Отменен' : 'В работе'}
                                                             </span>
                                                         );
                                                     })()}
