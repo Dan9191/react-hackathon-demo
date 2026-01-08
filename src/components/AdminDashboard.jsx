@@ -858,13 +858,16 @@ export default function AdminDashboard({ token }) {
                                                         {app.userData && (
                                                             <>
                                                                 <p style={{ margin: '2px 0', color: '#666', fontSize: '0.9rem' }}>
-                                                                    👤 Имя: <strong>{app.userData.firstName || 'Не указано'}</strong>
+                                                                    Имя: <strong>{app.userData.firstName || 'Не указано'}</strong>
                                                                 </p>
                                                                 <p style={{ margin: '2px 0', color: '#666', fontSize: '0.9rem' }}>
-                                                                    👤 Фамилия: <strong>{app.userData.lastName || 'Не указано'}</strong>
+                                                                    Фамилия: <strong>{app.userData.lastName || 'Не указано'}</strong>
                                                                 </p>
                                                                 <p style={{ margin: '2px 0', color: '#666', fontSize: '0.9rem' }}>
-                                                                    📧 Email: <strong>{app.userData.email || 'Не указан'}</strong>
+                                                                    Email: <strong>{app.userData.email || 'Не указан'}</strong>
+                                                                </p>
+                                                                <p style={{ margin: '2px 0', color: '#666', fontSize: '0.9rem' }}>
+                                                                    Контакт: <strong>{app.contact || 'Не указан'}</strong>
                                                                 </p>
                                                             </>
                                                         )}
@@ -874,7 +877,7 @@ export default function AdminDashboard({ token }) {
                                                                 <Link to={`/template/${app.projectData.id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1 }}>
                                                                     <p style={{ margin: '2px 0', color: '#666', fontSize: '0.9rem' }}>
 
-                                                                        🏠 Проект: <strong>{app.projectData.title || 'Без названия'}</strong>
+                                                                        Проект: <strong>{app.projectData.title || 'Без названия'}</strong>
                                                                         {app.projectData.areaM2 && (
 
                                                                             <span> ({app.projectData.areaM2} м²)</span>
@@ -886,9 +889,6 @@ export default function AdminDashboard({ token }) {
 
                                                         )}
 
-                                                        <p style={{ margin: '2px 0', color: '#666', fontSize: '0.9rem' }}>
-                                                            Контакт: <strong>{app.contact || 'Не указан'}</strong>
-                                                        </p>
                                                     </div>
                                                     <span style={{
                                                         padding: '4px 12px',
