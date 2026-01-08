@@ -419,12 +419,14 @@ export default function OrderManagement({ token }) {
             case 'new':
                 return [
                     { value: 'documentation', label: 'Подготовка документации' },
-                    { value: 'construction', label: 'Строительство' }
+                    { value: 'construction', label: 'Строительство' },
+                    { value: 'cancelled', label: 'Отменен' }
                 ];
             case 'documentation':
                 return [
                     { value: 'construction', label: 'Строительство' },
-                    { value: 'new', label: 'Новый' }
+                    { value: 'new', label: 'Новый' },
+                    { value: 'cancelled', label: 'Отменен' }
                 ];
             case 'construction':
                 return [
@@ -441,7 +443,8 @@ export default function OrderManagement({ token }) {
                     { value: 'documentation', label: 'Подготовка документации' },
                     { value: 'construction', label: 'Строительство' },
                     { value: 'completion', label: 'Завершение' },
-                    { value: 'closed', label: 'Закрыт' }
+                    { value: 'closed', label: 'Закрыт' },
+                    { value: 'cancelled', label: 'Отменен' }
                 ];
         }
     };
@@ -955,6 +958,7 @@ export default function OrderManagement({ token }) {
             case 'construction': return 'Строительство';
             case 'completion': return 'Завершение';
             case 'closed': return 'Закрыт';
+            case 'cancelled': return 'Отменен';
             default: return status;
         }
     };
