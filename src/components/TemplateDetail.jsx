@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getConfig } from '../config';
 import OrderModal from './OrderModal';
 import { jwtDecode } from 'jwt-decode';
+import { PhotoProvider, PhotoView } from 'react-photo-view';
+import 'react-photo-view/dist/react-photo-view.css';
 
 export default function TemplateDetail({ token, setToken }) {
     const { id } = useParams();
-    const navigate = useNavigate(); // Добавляем useNavigate
+    const navigate = useNavigate();
     const [template, setTemplate] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -172,7 +174,14 @@ export default function TemplateDetail({ token, setToken }) {
         </div>
     );
 
-    const previews = template.files?.filter(f => f.fileRole === 'preview' || f.fileRole === 'gallery') || [];
+    // Собираем все изображения для просмотра (preview + gallery)
+    const images = template.files
+        ?.filter(f => f.fileRole === 'preview' || f.fileRole === 'gallery')
+        ?.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)) || [];
+
+    const mainImage = images[0];
+    const thumbnails = images.slice(1);
+
     const documents = template.files?.filter(f => f.fileRole === 'document') || [];
 
     return (
@@ -228,109 +237,98 @@ export default function TemplateDetail({ token, setToken }) {
                 }}>
                     {/* Левая колонка - изображения и документы */}
                     <div>
-                        {/* Основное изображение */}
-                        {previews.length > 0 ? (
-                            <>
+                        <PhotoProvider
+                            overlayColor="rgba(0,0,0,0.92)"
+                            speed={() => 600}
+                            brokenElement={<div style={{ color: '#fff' }}>Изображение не загрузилось</div>}
+                        >
+                            {/* Главное изображение */}
+                            {mainImage ? (
+                                <PhotoView src={mainImage.url}>
+                                    <div style={{
+                                        borderRadius: '16px',
+                                        overflow: 'hidden',
+                                        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+                                        cursor: 'pointer',
+                                        marginBottom: '1.5rem',
+                                        transition: 'transform 0.3s ease'
+                                    }}
+                                         onMouseOver={e => e.currentTarget.style.transform = 'scale(1.015)'}
+                                         onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
+                                        <img
+                                            src={mainImage.url}
+                                            alt={template.title}
+                                            style={{
+                                                width: '100%',
+                                                height: '400px',
+                                                objectFit: 'cover',
+                                                display: 'block'
+                                            }}
+                                        />
+                                    </div>
+                                </PhotoView>
+                            ) : (
                                 <div style={{
                                     borderRadius: '16px',
                                     overflow: 'hidden',
-                                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
-                                    marginBottom: '1.5rem'
+                                    boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+                                    height: '400px',
+                                    background: 'linear-gradient(135deg, #e3f2fd, #bbdefb)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginBottom: '2.5rem'
                                 }}>
-                                    <img
-                                        src={previews[0].url}
-                                        alt={template.title}
-                                        style={{
-                                            width: '100%',
-                                            height: '400px',
-                                            objectFit: 'cover',
-                                            display: 'block'
-                                        }}
-                                    />
+                                    <div style={{ textAlign: 'center', color: '#2196F3' }}>
+                                        <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🏠</div>
+                                        <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>Изображение отсутствует</div>
+                                    </div>
                                 </div>
+                            )}
 
-                                {/* Галерея миниатюр */}
-                                {previews.length > 1 && (
-                                    <div style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: 'repeat(4, 1fr)',
-                                        gap: '1rem',
-                                        marginBottom: '2.5rem'
-                                    }}>
-                                        {previews.slice(1, 5).map((file, index) => (
-                                            <a
-                                                key={file.id}
-                                                href={file.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                style={{
-                                                    borderRadius: '12px',
-                                                    overflow: 'hidden',
-                                                    height: '100px',
-                                                    display: 'block',
-                                                    position: 'relative',
-                                                    transition: 'all 0.3s ease'
-                                                }}
-                                                onMouseOver={(e) => {
-                                                    e.target.style.transform = 'translateY(-4px)';
-                                                    e.target.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.15)';
-                                                }}
-                                                onMouseOut={(e) => {
-                                                    e.target.style.transform = 'translateY(0)';
-                                                    e.target.style.boxShadow = 'none';
-                                                }}
+                            {/* Галерея миниатюр */}
+                            {thumbnails.length > 0 && (
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(4, 1fr)',
+                                    gap: '1rem',
+                                    marginBottom: '2.5rem'
+                                }}>
+                                    {thumbnails.map((file) => (
+                                        <PhotoView key={file.id} src={file.url}>
+                                            <div style={{
+                                                borderRadius: '12px',
+                                                overflow: 'hidden',
+                                                height: '100px',
+                                                cursor: 'pointer',
+                                                position: 'relative',
+                                                transition: 'all 0.3s ease'
+                                            }}
+                                                 onMouseOver={e => {
+                                                     e.currentTarget.style.transform = 'scale(1.06)';
+                                                     e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.25)';
+                                                 }}
+                                                 onMouseOut={e => {
+                                                     e.currentTarget.style.transform = 'scale(1)';
+                                                     e.currentTarget.style.boxShadow = 'none';
+                                                 }}
                                             >
                                                 <img
                                                     src={file.url}
-                                                    alt={`${template.title} - фото ${index + 2}`}
+                                                    alt={`${template.title} - фото`}
                                                     style={{
                                                         width: '100%',
                                                         height: '100%',
                                                         objectFit: 'cover'
                                                     }}
                                                 />
-                                                {previews.length > 5 && index === 3 && (
-                                                    <div style={{
-                                                        position: 'absolute',
-                                                        top: 0,
-                                                        left: 0,
-                                                        right: 0,
-                                                        bottom: 0,
-                                                        background: 'rgba(0, 0, 0, 0.7)',
-                                                        color: 'white',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        fontSize: '1rem',
-                                                        fontWeight: 600,
-                                                        borderRadius: '12px'
-                                                    }}>
-                                                        +{previews.length - 4}
-                                                    </div>
-                                                )}
-                                            </a>
-                                        ))}
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            <div style={{
-                                borderRadius: '16px',
-                                overflow: 'hidden',
-                                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
-                                height: '400px',
-                                background: 'linear-gradient(135deg, #e3f2fd, #bbdefb)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                marginBottom: '2.5rem'
-                            }}>
-                                <div style={{ textAlign: 'center', color: '#2196F3' }}>
-                                    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🏠</div>
-                                    <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>Изображение отсутствует</div>
+                                            </div>
+                                        </PhotoView>
+                                    ))}
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </PhotoProvider>
 
                         {/* Секция с документами в левой колонке */}
                         <div>
