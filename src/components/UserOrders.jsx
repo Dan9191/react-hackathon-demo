@@ -688,8 +688,8 @@ export default function UserOrders({ token }) {
                                                                 )}
                                                             </div>
 
-                                                            {/* Информация о клиенте */}
-                                                            {order.clientInfo && (
+                                                            {/* Информация о менеджере */}
+                                                            {order.managerId && (
                                                                 <div>
                                                                     <h4 style={{
                                                                         color: '#37474f',
@@ -699,18 +699,21 @@ export default function UserOrders({ token }) {
                                                                         alignItems: 'center',
                                                                         gap: '8px'
                                                                     }}>
-                                                                        <span>👤</span> Клиент
+                                                                        <span>👔</span> Ответственный менеджер
                                                                     </h4>
-                                                                    <p style={{ color: '#546e7a', margin: 0 }}>
-                                                                        {order.clientInfo.fullName || 'Не указано'}
+                                                                    <p style={{ color: '#546e7a', margin: 0, fontWeight: 500 }}>
+                                                                        {order.managerFullName || `Менеджер ${order.managerId}`}
                                                                     </p>
-                                                                    {order.clientInfo.email && (
+                                                                    {order.managerContact && (
                                                                         <p style={{
+                                                                            color: '#2196F3',
+                                                                            margin: '0.25rem 0 0 0',
                                                                             fontSize: '0.9rem',
-                                                                            color: '#666',
-                                                                            margin: '0.25rem 0 0 0'
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '4px'
                                                                         }}>
-                                                                            {order.clientInfo.email}
+                                                                            📧 {order.managerContact}
                                                                         </p>
                                                                     )}
                                                                 </div>

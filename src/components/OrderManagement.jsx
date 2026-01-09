@@ -2761,7 +2761,7 @@ export default function OrderManagement({ token }) {
 
                 <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#e8f5e9', borderRadius: '8px' }}>
                     <p style={{ margin: 0, color: '#2e7d32' }}>
-                        ✅ Заказ закрыт. Все работы завершены и приняты клиентом.
+                        Заказ закрыт. Все работы завершены и приняты клиентом.
                     </p>
                 </div>
             </div>
