@@ -613,10 +613,21 @@ export default function UserApplications({ token }) {
                                                             }}>
                                                                 <span>👔</span> Ответственный менеджер
                                                             </h4>
-                                                            <p style={{ color: '#546e7a', margin: 0 }}>
-                                                                id: {application.managerId}
+                                                            <p style={{ color: '#546e7a', margin: 0, fontWeight: 500 }}>
+                                                                {application.managerFullName || `Менеджер ${application.managerId}`}
                                                             </p>
-
+                                                            {application.managerContact && (
+                                                                <p style={{
+                                                                    color: '#2196F3',
+                                                                    margin: '0.25rem 0 0 0',
+                                                                    fontSize: '0.9rem',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '4px'
+                                                                }}>
+                                                                    📧 {application.managerContact}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
