@@ -13,6 +13,7 @@ export default function PublicContent({ token }) {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [deletingTemplateId, setDeletingTemplateId] = useState(null);
 
     useEffect(() => {
         // Проверяем права пользователя
@@ -74,6 +75,12 @@ export default function PublicContent({ token }) {
             });
     };
 
+    const handleDeleteClick = (e, templateId) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleDelete(templateId);
+    };
+
     const handleOrderClick = (e, templateId) => {
         e.preventDefault();
         e.stopPropagation();
@@ -100,6 +107,38 @@ export default function PublicContent({ token }) {
             t.id === updatedTemplate.id ? updatedTemplate : t
         ));
         setShowEditModal(false);
+    };
+
+    const handleDelete = async (templateId) => {
+        if (!window.confirm('Вы уверены, что хотите удалить этот шаблон?\nЭто действие нельзя отменить.')) {
+            return;
+        }
+
+        setDeletingTemplateId(templateId);
+        const { API_BASE_URL } = getConfig();
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/templates/${templateId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            if (!res.ok) {
+                throw new Error(`Ошибка удаления: ${res.status}`);
+            }
+
+            alert('Шаблон успешно удален!');
+
+            setTemplates(templates.filter(t => t.id !== templateId));
+        } catch (err) {
+            console.error('Ошибка удаления шаблона:', err);
+            alert('Ошибка удаления шаблона: ' + err.message);
+        } finally {
+            setDeletingTemplateId(null);
+        }
     };
 
     const handleCreateSuccess = (newTemplate) => {
@@ -516,32 +555,83 @@ export default function PublicContent({ token }) {
 
                             <div style={{ padding: '0 1.5rem 1.5rem' }}>
                                 {isAdmin ? (
-                                    <button
-                                        onClick={(e) => handleEditClick(e, t)}
-                                        style={{
-                                            width: '100%',
-                                            padding: '12px',
-                                            fontSize: '1rem',
-                                            fontWeight: 600,
-                                            background: 'linear-gradient(135deg, #FF9800, #F57C00)',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '10px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.3s ease'
-                                        }}
-                                        onMouseOver={(e) => {
-                                            e.target.style.transform = 'translateY(-2px)';
-                                            e.target.style.boxShadow = '0 4px 12px rgba(255, 152, 0, 0.3)';
-                                        }}
-                                        onMouseOut={(e) => {
-                                            e.target.style.transform = 'translateY(0)';
-                                            e.target.style.boxShadow = 'none';
-                                        }}
-                                    >
-                                        ✏️ Редактировать шаблон
-                                    </button>
-                                ) : (
+                                    <div style={{
+                                        display: 'flex',
+                                        gap: '0.75rem',
+                                        width: '100%'
+                                    }}>
+                                        <button
+                                            onClick={(e) => handleEditClick(e, t)}
+                                            style={{
+                                                flex: 1,
+                                                padding: '12px',
+                                                fontSize: '0.95rem',
+                                                fontWeight: 600,
+                                                background: 'linear-gradient(135deg, #FF9800, #F57C00)',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '10px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.3s ease'
+                                            }}
+                                            onMouseOver={(e) => {
+                                                e.target.style.transform = 'translateY(-2px)';
+                                                e.target.style.boxShadow = '0 4px 12px rgba(255, 152, 0, 0.3)';
+                                            }}
+                                            onMouseOut={(e) => {
+                                                e.target.style.transform = 'translateY(0)';
+                                                e.target.style.boxShadow = 'none';
+                                            }}
+                                        >
+                                            Редактировать
+                                        </button>
+                                        <button
+                                            onClick={(e) => handleDeleteClick(e, t.id)}
+                                            disabled={deletingTemplateId === t.id}
+                                            style={{
+                                                flex: 1,
+                                                padding: '12px',
+                                                fontSize: '0.95rem',
+                                                fontWeight: 600,
+                                                background: deletingTemplateId === t.id
+                                                    ? '#bdbdbd'
+                                                    : 'linear-gradient(135deg, #f44336, #d32f2f)',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '10px',
+                                                cursor: deletingTemplateId === t.id ? 'not-allowed' : 'pointer',
+                                                transition: 'all 0.3s ease'
+                                            }}
+                                            onMouseOver={(e) => {
+                                                if (deletingTemplateId !== t.id) {
+                                                    e.target.style.transform = 'translateY(-2px)';
+                                                    e.target.style.boxShadow = '0 4px 12px rgba(244, 67, 54, 0.3)';
+                                                }
+                                            }}
+                                            onMouseOut={(e) => {
+                                                e.target.style.transform = 'translateY(0)';
+                                                e.target.style.boxShadow = 'none';
+                                            }}
+                                            >
+                                            {deletingTemplateId === t.id ? (
+                                                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                                                    <span style={{
+                                                        width: '14px',
+                                                        height: '14px',
+                                                        border: '2px solid rgba(255, 255, 255, 0.3)',
+                                                        borderTopColor: 'white',
+                                                        borderRadius: '50%',
+                                                        animation: 'spin 1s linear infinite',
+                                                        display: 'inline-block'
+                                                    }}></span>
+                                                    Удаление...
+                                                </span>
+                                                ) : (
+                                                    'Удалить'
+                                                )}
+                                            </button>
+                                        </div>
+                                    ) : (
                                     <button
                                         onClick={(e) => handleOrderClick(e, t.id)}
                                         style={{
