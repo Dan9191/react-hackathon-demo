@@ -66,7 +66,6 @@ export default function PublicContent({ token }) {
 
                 setTemplates(templatesData);
                 setLoading(false);
-                //console.log('Загружено шаблонов:', templatesData.length, 'для админа:', adminStatus);
             })
             .catch(err => {
                 console.error('Failed to load templates:', err);
@@ -218,94 +217,95 @@ export default function PublicContent({ token }) {
         </div>
     );
 
-    // Проверяем, есть ли шаблоны
-    if (templates.length === 0) return (
-        <div style={{
-            maxWidth: '600px',
-            margin: '3rem auto',
-            padding: '3rem',
-            textAlign: 'center',
-            background: 'white',
-            borderRadius: '20px',
-            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.08)'
-        }}>
-            <div style={{
-                fontSize: '5rem',
-                marginBottom: '1.5rem',
-                color: isAdmin ? '#2196F3' : '#4CAF50'
-            }}>🏠</div>
-            <h2 style={{
-                color: '#1a237e',
-                marginBottom: '1rem',
-                fontSize: '1.8rem'
-            }}>
-                {isAdmin ? 'Нет шаблонов' : 'Нет доступных шаблонов'}
-            </h2>
-            <p style={{
-                color: '#546e7a',
-                marginBottom: isAdmin ? '1rem' : '2rem',
-                fontSize: '1.1rem'
-            }}>
-                {isAdmin
-                    ? 'Начните с создания первого шаблона дома'
-                    : 'В данный момент нет активных шаблонов домов для заказа'}
-            </p>
-
-            {isAdmin && (
-                <button
-                    onClick={() => setShowCreateModal(true)}
-                    style={{
-                        padding: '14px 32px',
-                        background: 'linear-gradient(135deg, #4CAF50, #2E7D32)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '12px',
-                        fontWeight: 600,
-                        fontSize: '1rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        marginTop: '1rem'
-                    }}
-                    onMouseOver={(e) => {
-                        e.target.style.transform = 'translateY(-2px)';
-                        e.target.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.3)';
-                    }}
-                    onMouseOut={(e) => {
-                        e.target.style.transform = 'translateY(0)';
-                        e.target.style.boxShadow = 'none';
-                    }}
-                >
-                    ➕ Создать первый шаблон
-                </button>
-            )}
-        </div>
-    );
-
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
-            <div style={{
-                textAlign: 'center',
-                margin: '3rem 0',
-                animation: 'fadeIn 0.5s ease'
-            }}>
-                <h1 style={{
-                    fontSize: '2.5rem',
-                    color: '#1a237e',
-                    marginBottom: '1rem',
-                    fontWeight: 700
-                }}>
-                    {isAdmin ? '👑 Управление шаблонами' : '🏡 Каталог домов'}
-                </h1>
-                <p style={{
-                    fontSize: '1.1rem',
-                    color: '#546e7a',
+
+            {templates.length === 0 ? (
+                <div style={{
                     maxWidth: '600px',
-                    margin: '0 auto'
+                    margin: '3rem auto',
+                    padding: '3rem',
+                    textAlign: 'center',
+                    background: 'white',
+                    borderRadius: '20px',
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.08)'
                 }}>
-                    {isAdmin
-                        ? 'Редактируйте существующие шаблоны и создавайте новые'
-                        : 'Выберите проект вашего будущего дома из нашей коллекции готовых шаблонов'}
-                </p>
+                    <div style={{
+                        fontSize: '5rem',
+                        marginBottom: '1.5rem',
+                        color: isAdmin ? '#2196F3' : '#4CAF50'
+                    }}>🏠</div>
+                    <h2 style={{
+                        color: '#1a237e',
+                        marginBottom: '1rem',
+                        fontSize: '1.8rem'
+                    }}>
+                        {isAdmin ? 'Нет шаблонов' : 'Нет доступных шаблонов'}
+                    </h2>
+                    <p style={{
+                        color: '#546e7a',
+                        marginBottom: isAdmin ? '1rem' : '2rem',
+                        fontSize: '1.1rem'
+                    }}>
+                        {isAdmin
+                            ? 'Начните с создания первого шаблона дома'
+                            : 'В данный момент нет активных шаблонов домов для заказа'}
+                    </p>
+
+                    {isAdmin && (
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            style={{
+                                padding: '14px 32px',
+                                background: 'linear-gradient(135deg, #4CAF50, #2E7D32)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '12px',
+                                fontWeight: 600,
+                                fontSize: '1rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease',
+                                marginTop: '1rem'
+                            }}
+                            onMouseOver={(e) => {
+                                e.target.style.transform = 'translateY(-2px)';
+                                e.target.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.3)';
+                            }}
+                            onMouseOut={(e) => {
+                                e.target.style.transform = 'translateY(0)';
+                                e.target.style.boxShadow = 'none';
+                            }}
+                        >
+                            ➕ Создать первый шаблон
+                        </button>
+                    )}
+                </div>
+            ) : (
+
+                <>
+                    <div style={{
+                        textAlign: 'center',
+                        margin: '3rem 0',
+                        animation: 'fadeIn 0.5s ease'
+                    }}>
+                        <h1 style={{
+                            fontSize: '2.5rem',
+                            color: '#1a237e',
+                            marginBottom: '1rem',
+                            fontWeight: 700
+                        }}>
+                            {isAdmin ? '👑 Управление шаблонами' : '🏡 Каталог домов'}
+                        </h1>
+                        <p style={{
+                            fontSize: '1.1rem',
+                            color: '#546e7a',
+                            maxWidth: '600px',
+                            margin: '0 auto'
+                        }}>
+                            {isAdmin
+                                ? 'Редактируйте существующие шаблоны и создавайте новые'
+                                : 'Выберите проект вашего будущего дома из нашей коллекции готовых шаблонов'}
+                        </p>
 
                 {isAdmin && (
                     <div style={{
@@ -667,67 +667,69 @@ export default function PublicContent({ token }) {
                     );
                 })}
 
-                {/* Карточка для создания нового шаблона (только для админов) */}
-                {isAdmin && (
-                    <div
-                        onClick={() => setShowCreateModal(true)}
-                        style={{
-                            cursor: 'pointer',
-                            background: 'linear-gradient(135deg, #f8f9fa, #e3f2fd)',
-                            border: '2px dashed #bbdefb',
-                            borderRadius: '16px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.3s ease',
-                            minHeight: '450px'
-                        }}
-                        onMouseOver={(e) => {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #e3f2fd, #bbdefb)';
-                            e.currentTarget.style.borderColor = '#2196F3';
-                            e.currentTarget.style.transform = 'translateY(-4px)';
-                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(33, 150, 243, 0.15)';
-                        }}
-                        onMouseOut={(e) => {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #f8f9fa, #e3f2fd)';
-                            e.currentTarget.style.borderColor = '#bbdefb';
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = 'none';
-                        }}
-                    >
-                        <div style={{ textAlign: 'center', padding: '2rem' }}>
-                            <div style={{
-                                fontSize: '4rem',
-                                color: '#2196F3',
-                                marginBottom: '1rem',
-                                transition: 'transform 0.3s ease'
-                            }}>
-                                ➕
+                        {/* Карточка для создания нового шаблона (только для админов) */}
+                        {isAdmin && (
+                            <div
+                                onClick={() => setShowCreateModal(true)}
+                                style={{
+                                    cursor: 'pointer',
+                                    background: 'linear-gradient(135deg, #f8f9fa, #e3f2fd)',
+                                    border: '2px dashed #bbdefb',
+                                    borderRadius: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.3s ease',
+                                    minHeight: '450px'
+                                }}
+                                onMouseOver={(e) => {
+                                    e.currentTarget.style.background = 'linear-gradient(135deg, #e3f2fd, #bbdefb)';
+                                    e.currentTarget.style.borderColor = '#2196F3';
+                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(33, 150, 243, 0.15)';
+                                }}
+                                onMouseOut={(e) => {
+                                    e.currentTarget.style.background = 'linear-gradient(135deg, #f8f9fa, #e3f2fd)';
+                                    e.currentTarget.style.borderColor = '#bbdefb';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            >
+                                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                                    <div style={{
+                                        fontSize: '4rem',
+                                        color: '#2196F3',
+                                        marginBottom: '1rem',
+                                        transition: 'transform 0.3s ease'
+                                    }}>
+                                        ➕
+                                    </div>
+                                    <h3 style={{
+                                        color: '#1a237e',
+                                        marginBottom: '0.5rem',
+                                        fontSize: '1.3rem',
+                                        fontWeight: 600
+                                    }}>
+                                        Добавить новый шаблон
+                                    </h3>
+                                    <p style={{
+                                        color: '#546e7a',
+                                        fontSize: '0.95rem',
+                                        maxWidth: '200px',
+                                        margin: '0 auto',
+                                        lineHeight: 1.5
+                                    }}>
+                                        Нажмите, чтобы создать новый проект дома
+                                    </p>
+                                </div>
                             </div>
-                            <h3 style={{
-                                color: '#1a237e',
-                                marginBottom: '0.5rem',
-                                fontSize: '1.3rem',
-                                fontWeight: 600
-                            }}>
-                                Добавить новый шаблон
-                            </h3>
-                            <p style={{
-                                color: '#546e7a',
-                                fontSize: '0.95rem',
-                                maxWidth: '200px',
-                                margin: '0 auto',
-                                lineHeight: 1.5
-                            }}>
-                                Нажмите, чтобы создать новый проект дома
-                            </p>
-                        </div>
+                        )}
                     </div>
-                )}
-            </div>
+                </>
+            )}
 
             {/* Модальное окно создания нового шаблона */}
-            {showCreateModal && isAdmin && (
+            {showCreateModal && (
                 <CreateTemplateModal
                     token={token}
                     onClose={() => setShowCreateModal(false)}
