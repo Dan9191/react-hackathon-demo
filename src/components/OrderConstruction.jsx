@@ -138,6 +138,96 @@ export default function OrderConstruction({ token, orderId }) {
         }
     };
 
+    const openCameraInNewWindow = (camera) => {
+        const features = `
+        width=${window.screen.width * 0.8},
+        height=${window.screen.height * 0.8},
+        top=${window.screen.height * 0.1},
+        left=${window.screen.width * 0.1},
+        resizable=yes,
+        scrollbars=yes,
+        toolbar=no,
+        menubar=no,
+        location=no,
+        status=no
+    `;
+
+        const newWindow = window.open('', `camera_${camera.id}`, features);
+
+        if (newWindow) {
+            newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Камера: ${camera.name}</title>
+                <style>
+                    body {
+                        margin: 0;
+                        padding: 20px;
+                        background: #f5f5f5;
+                        font-family: Arial, sans-serif;
+                    }
+                    .header {
+                        background: white;
+                        padding: 15px;
+                        border-radius: 5px;
+                        margin-bottom: 20px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                    .video-container {
+                        width: 100%;
+                        height: calc(100vh - 150px);
+                        background: black;
+                        border-radius: 5px;
+                        overflow: hidden;
+                    }
+                    iframe {
+                        width: 100%;
+                        height: 100%;
+                        border: none;
+                    }
+                    .controls {
+                        margin-top: 15px;
+                        display: flex;
+                        gap: 10px;
+                    }
+                    button {
+                        padding: 8px 16px;
+                        background: #2196F3;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+                    button:hover {
+                        background: #1976D2;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h2 style="margin: 0 0 10px 0;"> ${camera.name}</h2>
+                    <p style="margin: 5px 0;"><strong>IP:</strong> ${camera.ip}</p>
+                    <p style="margin: 5px 0;"><strong>Порт:</strong> ${camera.port}</p>
+                    <div class="controls">
+                        <button onclick="window.close()">Закрыть</button>
+                    </div>
+                </div>
+                <div class="video-container">
+                    <iframe 
+                        src="${camera.streamUrl}" 
+                        title="${camera.name}"
+                        allow="camera; microphone"
+                        allowfullscreen
+                    ></iframe>
+                </div>
+            </body>
+            </html>
+        `);
+            newWindow.document.close();
+        }
+    };
+
     const handleSendMessage = async () => {
         if (!newMessage.trim()) return;
 
@@ -729,23 +819,52 @@ export default function OrderConstruction({ token, orderId }) {
                                             fontSize: '0.85rem',
                                             color: '#666',
                                             display: 'flex',
-                                            justifyContent: 'space-between'
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
                                         }}>
                                             <span>IP: {selectedCamera.ip}:{selectedCamera.port}</span>
-                                            <button
-                                                onClick={() => fetchCameraDetails(selectedCamera.id)}
-                                                style={{
-                                                    padding: '4px 8px',
-                                                    background: 'transparent',
-                                                    border: '1px solid #2196F3',
-                                                    color: '#2196F3',
-                                                    borderRadius: '4px',
-                                                    cursor: 'pointer',
-                                                    fontSize: '0.8rem'
-                                                }}
-                                            >
-                                                Обновить
-                                            </button>
+
+                                            {/* Контейнер для кнопок */}
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                {/* Кнопка "Обновить" */}
+                                                <button
+                                                    onClick={() => fetchCameraDetails(selectedCamera.id)}
+                                                    style={{
+                                                        padding: '4px 12px',
+                                                        background: 'transparent',
+                                                        border: '1px solid #2196F3',
+                                                        color: '#2196F3',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.8rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px'
+                                                    }}
+                                                >
+                                                    🔄 Обновить
+                                                </button>
+
+                                                {/* Кнопка "Новое окно"*/}
+                                                <button
+                                                    onClick={() => openCameraInNewWindow(selectedCamera)}
+                                                    style={{
+                                                        padding: '4px 12px',
+                                                        background: 'transparent',
+                                                        border: '1px solid #4CAF50', // Зеленый вместо синего
+                                                        color: '#4CAF50', // Зеленый вместо синего
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.8rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px'
+                                                    }}
+                                                    title="Открыть камеру в отдельном окне браузера"
+                                                >
+                                                    🔗 Новое окно
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
